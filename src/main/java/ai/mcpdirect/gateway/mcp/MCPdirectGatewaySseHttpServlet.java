@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,6 +19,7 @@ import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpServerSession;
+import io.modelcontextprotocol.spec.ProtocolVersions;
 import jakarta.servlet.AsyncContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletInputStream;
@@ -27,8 +29,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-//import static ai.mcpdirect.gateway.mcp.MCPdirectGatewaySseServer.*;
 
 @WebServlet(
         name = "MCPdirectGatewaySseHttpServlet",
@@ -49,74 +49,17 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
     public static final String BASE_URL = "/mcpdirect/1/";
 
 	/** Default endpoint path for SSE connections */
-	 public static final String SSE_ENDPOINT = "/sse";
+    public static final String SSE_ENDPOINT = "/sse";
+    public static final String MCP_ENDPOINT = "/mcp";
     public static final String MSG_ENDPOINT = "/mcp/message";
-	/** Event type for regular messages */
-	// public static final String MESSAGE_EVENT_TYPE = "message";
+
+    public static final String TOOL_API_ENDPOINT = "/tool/";
 
 	/** Event type for endpoint information */
 	public static final String ENDPOINT_EVENT_TYPE = "endpoint";
 
-	// public static final String DEFAULT_BASE_URL = "";
-
 	/** JSON object mapper for serialization/deserialization */
 	private final ObjectMapper objectMapper = new ObjectMapper();
-
-	/** Base URL for the server transport */
-//	private final String baseUrl;
-
-	/** The endpoint path for handling client messages */
-//	private final String messageEndpoint;
-
-	/** The endpoint path for handling SSE connections */
-//	private final String sseEndpoint;
-
-	/** Map of active client sessions, keyed by session ID */
-	// private final Map<String, McpServerSession> sessions = new
-	// ConcurrentHashMap<>();
-
-	/** Flag indicating if the transport is in the process of shutting down */
-	// private final AtomicBoolean isClosing = new AtomicBoolean(false);
-
-	/** Session factory for creating new sessions */
-	// private McpServerSession.Factory sessionFactory;
-
-//	private final Map<Long, MCPwingsMcpServer> providers;
-
-//	public MCPdirectGatewaySseHttpServlet(
-//			Map<Long, MCPwingsMcpServer> providers,
-//			ObjectMapper objectMapper, String messageEndpoint,
-//			String sseEndpoint) {
-//		this(providers, objectMapper, MCPdirectGatewaySseServer.BASE_URL, messageEndpoint, sseEndpoint);
-//	}
-
-//	public MCPdirectGatewaySseHttpServlet(
-//			Map<Long, MCPwingsMcpServer> providers,
-//			ObjectMapper objectMapper, String baseUrl, String messageEndpoint,
-//			String sseEndpoint) {
-//		this.providers = providers;
-//		this.objectMapper = objectMapper;
-//		this.baseUrl = baseUrl;
-//		this.messageEndpoint = messageEndpoint;
-//		this.sseEndpoint = sseEndpoint;
-//	}
-
-//	public MCPdirectGatewaySseHttpServlet(Map<Long, MCPwingsMcpServer> providers,
-//			ObjectMapper objectMapper, String messageEndpoint) {
-//		this(providers, objectMapper, messageEndpoint, MCPdirectGatewaySseServer.SSE_ENDPOINT);
-//	}
-
-	// public AIPortHttpServletSseServerTransportProvider(ObjectMapper objectMapper)
-	// {
-	// this.objectMapper = objectMapper;
-	// }
-	// public void addAIPortMcpServerTransportProvider(String
-	// providerName,AIPortMcpServer provider){
-	// providers.put(providerName, provider);
-	// }
-//	public MCPwingsMcpServer removeAIPortMcpServerTransportProvider(String providerName) {
-//		return providers.remove(providerName);
-//	}
 
 	public MCPdirectTransportProvider getMCPdirectTransportProvider(HttpServletRequest request) {
 		String auth = request.getHeader("Authorization");
@@ -129,17 +72,17 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
 		if(auth==null){
 			String path = request.getPathInfo();
 			String[] split = path.split("/");
-			if(path.endsWith(SSE_ENDPOINT)){
+			if(path.endsWith(SSE_ENDPOINT)||path.endsWith(MCP_ENDPOINT)){
 				auth = split[split.length-2];
-			}else if(path.endsWith(MSG_ENDPOINT)){
+			}else if(path.endsWith(MSG_ENDPOINT)||split[split.length-2].equals("tool")){
 				auth = split[split.length-3];
 			}else{
 				return null;
 			}
 			auth = MCPdirectAccessKeyValidator.PREFIX_AIK+"-"+auth;
 		}
-		logger.info("getMCPwingsTransportProvider({})",auth);
-		return MCPdirectGatewayApplication.getFactory().getMCPwingsTransportProvider(auth);
+		logger.info("getMCPdirectTransportProvider({})",auth);
+		return MCPdirectGatewayApplication.getFactory().getMCPdirectTransportProvider(auth);
 	}
 
 	/**
@@ -201,14 +144,6 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
 
 		provider.createSession(sessionId, ip,asyncContext, writer);
 
-		// Create a new session transport
-		// HttpServletMcpSessionTransport sessionTransport = new
-		// HttpServletMcpSessionTransport(sessionId, asyncContext,
-		// writer);
-
-		// Create a new session using the session factory
-		// McpServerSession session = sessionFactory.create(sessionTransport);
-		// this.sessions.put(sessionId, session);
 		String apiKey = provider.getApiKey().substring(MCPdirectAccessKeyValidator.PREFIX_AIK.length()+1);
 		// Send initial endpoint event
 		this.sendEvent(writer, ENDPOINT_EVENT_TYPE,
@@ -257,7 +192,9 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
 				response.setContentType(APPLICATION_JSON);
 				response.setCharacterEncoding(UTF_8);
 				response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-				String jsonError = objectMapper.writeValueAsString(new McpError("Session not found: " + sessionId));
+				String jsonError = objectMapper.writeValueAsString(
+                        new McpError("Session not found: " + sessionId)
+                );
 				PrintWriter writer = response.getWriter();
 				writer.write(jsonError);
 				writer.flush();
@@ -294,41 +231,56 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
 				}
 			}
 		}else if((provider = getMCPdirectTransportProvider(request))!=null){
-
 			Optional<String> inputParam = getBody(request);
 			if (inputParam.isEmpty()) {
 				response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
 				return;
 			}
-//			String ip = request.getHeader("X-Real-IP");
-//			if(ip==null){
-//				ip = request.getRemoteHost();
-//			}
-//			int count = provider.count(ip);
-//			if(count>50){
-//				response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Too must connections from "+ip);
-//				return;
-//			}
-//			McpSchema.JSONRPCMessage message = McpSchema.deserializeJsonRpcMessage(objectMapper, inputParam.get());
-//			McpServerSession session = provider.createSession(ip, response);
-//			session.handle(message).block();
-//			logger.info("request param is {}", inputParam.get());
-			McpSchema.JSONRPCMessage message = McpSchema.deserializeJsonRpcMessage(objectMapper, inputParam.get());
-			if (message instanceof McpSchema.JSONRPCRequest mcpRequest) {
-				logger.debug("Received request: {}", mcpRequest);
-				response.setContentType(APPLICATION_JSON);
-				response.setCharacterEncoding(UTF_8);
-				response.getWriter().write(objectMapper.writeValueAsString(handleIncomingRequest(mcpRequest,provider)));
-			}
-			else if (message instanceof McpSchema.JSONRPCNotification notification) {
-				logger.debug("Received notification: {}", notification);
-				response.setStatus(HttpServletResponse.SC_ACCEPTED);
-				response.getWriter().write(handleIncomingNotification(notification));
-			} else {
-				logger.warn("Received unknown message type: {}", message);
-				response.getWriter().write("{}");
-			}
-		}
+            String path = request.getPathInfo();
+            if(path.contains("/tool/")){
+                McpServerFeatures.SyncToolSpecification toolSpecification;
+                String[] split = path.split("/");
+                String tool = split[split.length-1];
+                if(tool.equals("list")){
+                    List<McpSchema.Tool> tools = provider.getTools();
+                    logger.debug("Received tool/list request: {}", tools);
+                    response.setContentType(APPLICATION_JSON);
+                    response.setCharacterEncoding(UTF_8);
+                    response.getWriter().write(objectMapper.writeValueAsString(tools));
+                }else if((toolSpecification=provider.getTool(tool))!=null){
+                    Map<String,Object> params = objectMapper.readValue(
+                            inputParam.get(), new TypeReference<>() {}
+                    );
+                    Object mcpCallResult = toolSpecification.call().apply(
+                            null, params
+                    );
+                    logger.debug("Received tool/call request: {}", params);
+                    response.setContentType(APPLICATION_JSON);
+                    response.setCharacterEncoding(UTF_8);
+                    response.getWriter().write(objectMapper.writeValueAsString(mcpCallResult));
+                }else{
+                    response.sendError(HttpServletResponse.SC_NOT_FOUND);
+                }
+            }else {
+                McpSchema.JSONRPCMessage message = McpSchema.deserializeJsonRpcMessage(objectMapper, inputParam.get());
+                if (message instanceof McpSchema.JSONRPCRequest mcpRequest) {
+                    logger.debug("Received request: {}", mcpRequest);
+                    response.setContentType(APPLICATION_JSON);
+                    response.setCharacterEncoding(UTF_8);
+                    response.getWriter().write(objectMapper.writeValueAsString(handleIncomingRequest(mcpRequest, provider)));
+                } else if (message instanceof McpSchema.JSONRPCNotification notification) {
+                    logger.debug("Received notification: {}", notification);
+                    response.setStatus(HttpServletResponse.SC_ACCEPTED);
+                    response.getWriter().write(handleIncomingNotification(notification));
+                } else {
+                    logger.warn("Received unknown message type: {}", message);
+                    response.getWriter().write("{}");
+                }
+            }
+		}else{
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+        }
+
 	}
 	private Optional<String> getBody(HttpServletRequest request) {
 		try (ServletInputStream servletInputStream = request.getInputStream()) {
@@ -340,7 +292,7 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
 		return Optional.empty();
 	}
 
-	private List<String> protocolVersions = List.of(McpSchema.LATEST_PROTOCOL_VERSION);
+	private final List<String> protocolVersions = List.of(ProtocolVersions.MCP_2025_03_26);
 	private Object handleIncomingRequest(McpSchema.JSONRPCRequest request, MCPdirectTransportProvider provider) {
 		if (McpSchema.METHOD_INITIALIZE.equals(request.method())) {
 

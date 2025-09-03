@@ -83,7 +83,7 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
 
     final
     @Override
-    public MCPdirectTransportProvider getMCPwingsTransportProvider(String apiKey) {
+    public MCPdirectTransportProvider getMCPdirectTransportProvider(String apiKey) {
 //        Long userId = MCPdirectAccessKeyValidator.extractUserId(MCPdirectAccessKeyValidator.PREFIX_AIK,apiKey);
 //        if(userId==null){
 //            return null;

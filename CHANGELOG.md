@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0] - 2025-09-10
+
+### Added
+- Version endpoint constant for version reporting
+- HstpServiceEngine dependency for enhanced service capabilities
+
+### Changed
+- Upgraded hstp-service-engine version from 1.3.0 to 1.4.0
+- Refactored API key substring extraction for better readability
+- Updated tool call response handling to return empty JSON object instead of empty string
+- Minor code formatting improvements in servlet implementation
+
+### Fixed
+- Variable declaration syntax in doPost method
+
 ## [1.1.0] - 2025-09-03
 
 ### Added

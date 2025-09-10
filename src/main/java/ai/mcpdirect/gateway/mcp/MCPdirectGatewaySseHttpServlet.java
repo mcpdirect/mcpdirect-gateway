@@ -2,15 +2,14 @@ package ai.mcpdirect.gateway.mcp;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import ai.mcpdirect.gateway.MCPdirectGatewayApplication;
 import ai.mcpdirect.util.MCPdirectAccessKeyValidator;
 
+import appnet.hstp.engine.HstpServiceEngine;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -48,6 +47,7 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
 
     public static final String BASE_URL = "/mcpdirect/1/";
 
+    public static final String VERSION_ENDPOINT = "/version";
 	/** Default endpoint path for SSE connections */
     public static final String SSE_ENDPOINT = "/sse";
     public static final String MCP_ENDPOINT = "/mcp";
@@ -84,7 +84,7 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
 		logger.info("getMCPdirectTransportProvider({})",auth);
 		return MCPdirectGatewayApplication.getFactory().getMCPdirectTransportProvider(auth);
 	}
-
+    private String version;
 	/**
 	 * Handles GET requests to establish SSE connections.
 	 * <p>
@@ -144,7 +144,8 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
 
 		provider.createSession(sessionId, ip,asyncContext, writer);
 
-		String apiKey = provider.getApiKey().substring(MCPdirectAccessKeyValidator.PREFIX_AIK.length()+1);
+		String apiKey = provider.getApiKey()
+                .substring(MCPdirectAccessKeyValidator.PREFIX_AIK.length()+1);
 		// Send initial endpoint event
 		this.sendEvent(writer, ENDPOINT_EVENT_TYPE,
 		BASE_URL+ apiKey+ MSG_ENDPOINT + "?sessionId=" + sessionId);
@@ -167,7 +168,7 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		String sessionId = request.getParameter("sessionId");
-		MCPdirectTransportProvider provider = null;
+		MCPdirectTransportProvider provider ;
 		if(sessionId!=null) {
 			String requestURI = request.getRequestURI();
 			if (!requestURI.endsWith(MSG_ENDPOINT)) {
@@ -344,7 +345,7 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
 			Object mcpCallResult = toolSpecification.call().apply(null, callToolRequest.arguments());
 			return new McpSchema.JSONRPCResponse(McpSchema.JSONRPC_VERSION, request.id(), mcpCallResult, null);
 		}
-		return "";
+		return "{}";
 	}
 
 	private String handleIncomingNotification(McpSchema.JSONRPCNotification notification) {

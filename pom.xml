@@ -12,7 +12,7 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.test.skip>true</maven.test.skip>
-        <mcp-version>0.11.3</mcp-version>
+        <mcp-version>0.12.1</mcp-version>
         <spring-boot-version>3.5.5</spring-boot-version>
         <spring-ai-mcp-version>1.0.1</spring-ai-mcp-version>
     </properties>
@@ -20,7 +20,7 @@
         <dependency>
             <groupId>tech.appnet.hstp</groupId>
             <artifactId>hstp-service-engine</artifactId>
-            <version>1.4.1</version>
+            <version>1.4.2</version>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>

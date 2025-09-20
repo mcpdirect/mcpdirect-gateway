@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.2] - 2025-09-10
+
+### Changed
+- Upgraded hstp-service-engine version from 1.4.1 to 1.4.2
+- Upgraded MCP version from 0.11.3 to 0.12.1
+
 ## [1.1.1] - 2025-09-10
 
 ### Changed

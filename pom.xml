@@ -6,15 +6,15 @@
 
     <groupId>ai.mcpdirect</groupId>
     <artifactId>mcpdirect-gateway</artifactId>
-    <version>1.1.1-SNAPSHOT</version>
+    <version>1.2.0-SNAPSHOT</version>
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.test.skip>true</maven.test.skip>
-        <mcp-version>0.12.1</mcp-version>
+        <mcp-version>0.14.0</mcp-version>
         <spring-boot-version>3.5.5</spring-boot-version>
-        <spring-ai-mcp-version>1.0.1</spring-ai-mcp-version>
+        <spring-ai-mcp-version>1.1.0-M3</spring-ai-mcp-version>
     </properties>
     <dependencies>
         <dependency>

@@ -13,6 +13,8 @@ import appnet.hstp.engine.HstpServiceEngine;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.TypeRef;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpError;
@@ -57,9 +59,12 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
 
 	/** Event type for endpoint information */
 	public static final String ENDPOINT_EVENT_TYPE = "endpoint";
-
+    private static final McpJsonMapper objectMapper;
+    static {
+        objectMapper = McpJsonMapper.getDefault();
+    }
 	/** JSON object mapper for serialization/deserialization */
-	private final ObjectMapper objectMapper = new ObjectMapper();
+//	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	public MCPdirectTransportProvider getMCPdirectTransportProvider(HttpServletRequest request) {
 		String auth = request.getHeader("Authorization");
@@ -250,7 +255,7 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
                     response.getWriter().write(objectMapper.writeValueAsString(tools));
                 }else if((toolSpecification=provider.getTool(tool))!=null){
                     Map<String,Object> params = objectMapper.readValue(
-                            inputParam.get(), new TypeReference<>() {}
+                            inputParam.get(), new TypeRef<>() {}
                     );
                     Object mcpCallResult = toolSpecification.call().apply(
                             null, params
@@ -297,7 +302,8 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
 	private Object handleIncomingRequest(McpSchema.JSONRPCRequest request, MCPdirectTransportProvider provider) {
 		if (McpSchema.METHOD_INITIALIZE.equals(request.method())) {
 
-			McpSchema.InitializeRequest initializeRequest = objectMapper.convertValue(request.params(), new TypeReference<>() {
+			McpSchema.InitializeRequest initializeRequest = objectMapper.convertValue(
+                    request.params(), new TypeRef<>() {
 			});
 
 			logger.info("Client initialize request - Protocol: {}, Capabilities: {}, Info: {}",
@@ -331,7 +337,8 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
 			return new McpSchema.JSONRPCResponse(McpSchema.JSONRPC_VERSION, request.id(), mcpListTool, null);
 
 		} else if (McpSchema.METHOD_TOOLS_CALL.equals(request.method())) {
-			McpSchema.CallToolRequest callToolRequest = objectMapper.convertValue(request.params(), new TypeReference<>() {});
+			McpSchema.CallToolRequest callToolRequest = objectMapper.convertValue(request.params(),
+                    new TypeRef<>() {});
 
 //			Optional<McpServerFeatures.AsyncToolSpecification> toolSpecification = this.tools.stream()
 //					.filter(tr -> callToolRequest.name().equals(tr.tool().name()))

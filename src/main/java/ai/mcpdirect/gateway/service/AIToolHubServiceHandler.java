@@ -25,7 +25,8 @@ import appnet.hstp.annotation.ServiceRequestMapping;
 @ServiceRequestMapping("/aitools/hub/")
 public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactory,ServiceBroadcastListener {
     private static final Logger LOG = LoggerFactory.getLogger(AIToolHubServiceHandler.class);
-
+//    aitools.discovery@mcpdirect.ai/list/user/tools
+    public static final USL USL_LIST_USER_TOOLS = new USL("aitools.discovery","mcpdirect.ai","list/user/tools");
     private ServiceEngine engine;
 //    private ExecutorService executorService;
     @ServiceRequestInit
@@ -106,8 +107,7 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
                 providers.remove(apiKeyHash);
                 provider.closeGracefully();
             }
-            Service service = USL
-                    .createServiceClient("aitools.management@mcpdirect.ai/list/user/tools")
+            Service service = USL_LIST_USER_TOOLS.createServiceClient()
                     .headers(new ServiceHeaders().addHeader("mcpdirect-auth",apiKey))
                     .content("{\"lastUpdated\":"+(accessKey==null?0:cache.toolsLastUpdated(accessKey.userId))+"}")
                     .request(engine);

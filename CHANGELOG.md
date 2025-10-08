@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.2.0] - 2025-10-08
+
+### Changed
+- Upgraded hstp-service-engine version from 1.4.2 to 1.4.2 (latest)
+- Upgraded MCP version from 0.12.1 to 0.14.0
+- Updated project version from 1.1.2 to 1.2.0-SNAPSHOT
+- Updated spring-ai-mcp-version from 1.0.1 to 1.1.0-M3
+- Replaced Jackson ObjectMapper with McpJsonMapper for better MCP protocol compatibility
+- Updated TypeReference to TypeRef for MCP JSON serialization/deserialization
+
+### Added
+- Enhanced MCP gateway functionality with improved transport handling
+- Tool API endpoint functionality to support direct tool calls
+- New MCP endpoint constant for enhanced routing
+- JUnit dependency for testing
+- Static McpJsonMapper initialization in MCPdirectGatewaySseHttpServlet and MCPdirectTransportProvider
+- USL constant for list user tools endpoint in AIToolHubServiceHandler
+- Support for SyncToolSpecification with proper input schema handling
+
+### Fixed
+- Improved path parsing logic for authentication extraction
+- Enhanced error handling for tool API endpoints
+- Updated tool specification creation to use proper builder pattern
+- Fixed unmarshalling method to use McpJsonMapper instead of Jackson ObjectMapper
+
+### Refactored
+- Replaced direct McpSchema.Tool constructor with builder pattern in MCPdirectTransportProvider
+- Updated AIToolHubServiceHandler to use USL constant instead of string literal for service creation
+- Cleaned up deprecated or unused ObjectMapper code
+
 ## [1.1.2] - 2025-09-10
 
 ### Changed

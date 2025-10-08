@@ -8,6 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.json.TypeRef;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +39,10 @@ import reactor.core.publisher.Mono;
 public class MCPdirectTransportProvider implements McpServerTransportProvider{
     public static final String MESSAGE_EVENT_TYPE = "message";
     private static final Logger LOG = LoggerFactory.getLogger(MCPdirectTransportProvider.class);
+    private static final McpJsonMapper jsonMapper;
+    static {
+        jsonMapper = McpJsonMapper.getDefault();
+    }
 
     private final AtomicBoolean isClosing = new AtomicBoolean(false);
     private final Map<String, McpServerSession> sessions = new ConcurrentHashMap<>();
@@ -47,6 +53,7 @@ public class MCPdirectTransportProvider implements McpServerTransportProvider{
 	private final McpSyncServer server;
 	private final ConcurrentHashMap<String,SyncToolSpecification> tools=new ConcurrentHashMap<>();
     public MCPdirectTransportProvider(long userId, String secretKey) {
+
 		this.userId = userId;
 		this.secretKey = secretKey;
 		McpSchema.ServerCapabilities serverCapabilities = McpSchema.ServerCapabilities.builder()
@@ -65,11 +72,13 @@ public class MCPdirectTransportProvider implements McpServerTransportProvider{
 	}
 	public static final String TOOL_CONTEXT_MCP_EXCHANGE_KEY = "exchange";
 	public static SyncToolSpecification toSyncToolSpecification(ToolCallback toolCallback, MimeType mimeType) {
+        McpSchema.Tool.Builder builder = McpSchema.Tool.builder();
+        var tool = builder.name(toolCallback.getToolDefinition().name())
+                .description(toolCallback.getToolDefinition().description())
+                .inputSchema(jsonMapper,toolCallback.getToolDefinition().inputSchema())
+                .build();
 
-		var tool = new McpSchema.Tool(toolCallback.getToolDefinition().name(),
-				toolCallback.getToolDefinition().description(), toolCallback.getToolDefinition().inputSchema());
-
-		return new McpServerFeatures.SyncToolSpecification(tool, (exchange, request) -> {
+		return new McpServerFeatures.SyncToolSpecification(tool, null,(exchange, request) -> {
 			try {
 				ToolContext toolContext = exchange!=null?new ToolContext(Map.of(TOOL_CONTEXT_MCP_EXCHANGE_KEY, exchange)):null;
 				String callResult = toolCallback.call(ModelOptionsUtils.toJsonString(request), toolContext);
@@ -254,19 +263,12 @@ public class MCPdirectTransportProvider implements McpServerTransportProvider{
 			});
 		}
 
-		/**
-		 * Converts data from one type to another using the configured ObjectMapper.
-		 * @param data The source data object to convert
-		 * @param typeRef The target type reference
-		 * @return The converted object of type T
-		 * @param <T> The target type
-		 */
-		@Override
-		public <T> T unmarshalFrom(Object data, TypeReference<T> typeRef) {
-			return objectMapper.convertValue(data, typeRef);
-		}
+        @Override
+        public <T> T unmarshalFrom(Object data, TypeRef<T> typeRef) {
+            return jsonMapper.convertValue(data, typeRef);
+        }
 
-		/**
+        /**
 		 * Initiates a graceful shutdown of the transport.
 		 * @return A Mono that completes when the shutdown is complete
 		 */

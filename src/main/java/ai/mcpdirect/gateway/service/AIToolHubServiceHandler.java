@@ -90,17 +90,16 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
 //            return null;
 //        }
         MCPdirectTransportProvider provider;
-        long keyId = MCPdirectAccessKeyValidator.hashCode(apiKey);
-        MCPdirectAccessKeyCache.AccessKey accessKey = cache.getAccessKey(keyId);
+        long apiKeyHash = MCPdirectAccessKeyValidator.hashCode(apiKey);
+        MCPdirectAccessKeyCache.AccessKey accessKey = cache.getAccessKey(apiKeyHash);
         if(accessKey!=null&&accessKey.status<1){
-            provider = providers.remove(keyId);
+            provider = providers.remove(apiKeyHash);
             if(provider!=null){
                 provider.closeGracefully();
             }
             return null;
         }
 
-        long apiKeyHash = MCPdirectAccessKeyValidator.hashCode(apiKey);
         provider = providers.get(apiKeyHash);
         if(provider==null||accessKey==null||cache.toolsAnnounced(accessKey.userId))try {
             if(provider!=null){
@@ -137,10 +136,10 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
                         name += ("_"+Long.toString((usl.toString().hashCode()&0xFFFFFFFFL),32));
                         provider.addTool(name, description, s.requestSchema,usl, engine);
                     }
-                cache.addAccessKey(ap.userId,keyId,1,apiKey);
+                cache.addAccessKey(ap.userId,apiKeyHash,1,apiKey);
                 cache.toolsUpdate(ap.userId,System.currentTimeMillis());
             }else{
-                cache.addAccessKey(0,keyId,-1,null);
+                cache.addAccessKey(0,apiKeyHash,-1,null);
             }
         }catch (Exception e){
             LOG.error("getMCPdirectTransportProvider({})",apiKey,e);

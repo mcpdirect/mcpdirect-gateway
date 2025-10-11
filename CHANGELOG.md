@@ -28,6 +28,7 @@
 ### Refactored
 - Replaced direct McpSchema.Tool constructor with builder pattern in MCPdirectTransportProvider
 - Updated AIToolHubServiceHandler to use USL constant instead of string literal for service creation
+- Renamed keyId to apiKeyHash for consistency in AIToolHubServiceHandler
 - Cleaned up deprecated or unused ObjectMapper code
 
 ## [1.1.2] - 2025-09-10

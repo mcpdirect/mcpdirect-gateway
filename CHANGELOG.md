@@ -3,7 +3,7 @@
 ## [1.2.0] - 2025-10-08
 
 ### Changed
-- Upgraded hstp-service-engine version from 1.4.2 to 1.4.2 (latest)
+- Upgraded hstp-service-engine version from 1.4.2 to 1.5.0
 - Upgraded MCP version from 0.12.1 to 0.14.0
 - Updated project version from 1.1.2 to 1.2.0-SNAPSHOT
 - Updated spring-ai-mcp-version from 1.0.1 to 1.1.0-M3

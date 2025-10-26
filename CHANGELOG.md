@@ -4,7 +4,7 @@
 
 ### Changed
 - Upgraded hstp-service-engine version from 1.4.2 to 1.5.0
-- Upgraded MCP version from 0.12.1 to 0.14.0
+- Upgraded MCP version from 0.12.1 to 0.14.1
 - Updated project version from 1.1.2 to 1.2.0-SNAPSHOT
 - Updated spring-ai-mcp-version from 1.0.1 to 1.1.0-M3
 - Replaced Jackson ObjectMapper with McpJsonMapper for better MCP protocol compatibility
@@ -18,6 +18,13 @@
 - Static McpJsonMapper initialization in MCPdirectGatewaySseHttpServlet and MCPdirectTransportProvider
 - USL constant for list user tools endpoint in AIToolHubServiceHandler
 - Support for SyncToolSpecification with proper input schema handling
+- Database integration with PostgreSQL and MyBatis for data persistence
+- Redis support with Jedis for caching
+- DAO layer with AccountDataHelper and AIToolDataHelper for data access
+- Entity classes for account management (AIPortUser, AIPortAccessKey, etc.)
+- Entity classes for AI tool management (AIPortTool, AIPortToolAgent, etc.)
+- MyBatis mappers for database operations (AccountMapper, AIToolMapper, etc.)
+- MCPToolSchema utility for tool schema management
 
 ### Fixed
 - Improved path parsing logic for authentication extraction

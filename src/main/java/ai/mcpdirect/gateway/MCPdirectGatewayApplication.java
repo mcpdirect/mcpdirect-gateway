@@ -1,6 +1,7 @@
 package ai.mcpdirect.gateway;
 
 import ai.mcpdirect.gateway.mcp.MCPdirectTransportProviderFactory;
+import appnet.hstp.exception.ServiceEngineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,14 +15,16 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.web.servlet.ServletComponentScan;
+import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
-@ServletComponentScan("ai.mcpdirect.gateway.mcp")
+@ComponentScan("ai.mcpdirect.gateway")
+@ServletComponentScan("ai.mcpdirect.gateway")
 @ServiceScan()
 public class MCPdirectGatewayApplication implements CommandLineRunner {
 	private static final Logger LOG = LoggerFactory.getLogger(MCPdirectGatewayApplication.class);
 //	private static MCPdirectGatewaySseServer mcpSseServer;
-    public static void main(String[] args){
+    public static void main(String[] args) throws ServiceEngineException {
         SpringApplication app = new SpringApplication(MCPdirectGatewayApplication.class);
         app.setBannerMode(Banner.Mode.OFF);
         app.run(args);
@@ -44,6 +47,9 @@ public class MCPdirectGatewayApplication implements CommandLineRunner {
 //		mcpSseServer = new MCPdirectGatewaySseServer();
 ////		mcpSseServer.addMcpServer("robinshang", "aik-ZxLkym826ITJX9rcbOlPS7r0i1nrazeg9f58");
 //		mcpSseServer.start();
+        ServiceEngineFactory.setServiceEngineIdSeed("ai.mcpdirect.gateway");
+        ServiceEngine serviceEngine = ServiceEngineFactory.getServiceEngine();
+        LOG.info("ServiceEngine "+serviceEngine+" started");
     }
 //	public static void addMcpServer(String user,String secretKey){
 //		mcpSseServer.addMcpServer(user, secretKey);
@@ -63,8 +69,9 @@ public class MCPdirectGatewayApplication implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        ServiceEngineFactory.setServiceEngineIdSeed("ai.mcpdirect.gateway");
-        ServiceEngine serviceEngine = ServiceEngineFactory.getServiceEngine();
-        LOG.info("ServiceEngine "+serviceEngine+" started");
+        LOG.info("MCPdirectGatewayApplication started");
+//        ServiceEngineFactory.setServiceEngineIdSeed("ai.mcpdirect.gateway");
+//        ServiceEngine serviceEngine = ServiceEngineFactory.getServiceEngine();
+//        LOG.info("ServiceEngine "+serviceEngine+" started");
     }
 }

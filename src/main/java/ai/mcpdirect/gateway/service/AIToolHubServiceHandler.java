@@ -7,17 +7,15 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import ai.mcpdirect.gateway.dao.AIToolDataHelper;
-import ai.mcpdirect.gateway.dao.AccountDataHelper;
+import ai.mcpdirect.gateway.dao.MCPToolDataHelper;
+import ai.mcpdirect.gateway.dao.MCPAccessKeyDataHelper;
 import ai.mcpdirect.gateway.dao.entity.account.AIPortAccessKeyCredential;
-import ai.mcpdirect.gateway.dao.entity.account.AIPortTeam;
-import ai.mcpdirect.gateway.dao.entity.account.AIPortTeamMember;
 import ai.mcpdirect.gateway.dao.entity.aitool.AIPortTeamToolMaker;
 import ai.mcpdirect.gateway.dao.entity.aitool.AIPortTool;
 import ai.mcpdirect.gateway.dao.entity.aitool.AIPortToolAgent;
 import ai.mcpdirect.gateway.dao.entity.aitool.AIPortToolMaker;
-import ai.mcpdirect.gateway.dao.mapper.account.AccountMapper;
-import ai.mcpdirect.gateway.dao.mapper.aitool.AIToolMapper;
+import ai.mcpdirect.gateway.dao.mapper.account.MCPAccessKeyMapper;
+import ai.mcpdirect.gateway.dao.mapper.aitool.MCPToolMapper;
 import ai.mcpdirect.gateway.mcp.MCPdirectTransportProvider;
 import ai.mcpdirect.util.MCPdirectAccessKeyValidator;
 import appnet.hstp.*;
@@ -40,13 +38,13 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
 //    aitools.discovery@mcpdirect.ai/list/user/tools
     public static final USL USL_LIST_USER_TOOLS = new USL("aitools.discovery","mcpdirect.ai","list/user/tools");
     private ServiceEngine engine;
-    private AccountMapper accountMapper;
-    private AIToolMapper toolMapper;
+    private MCPAccessKeyMapper accessKeyMapper;
+    private MCPToolMapper toolMapper;
     @ServiceRequestInit
     public void init(ServiceEngine engine) {
         this.engine = engine;
-        accountMapper = AccountDataHelper.getInstance().getAccountMapper();
-        toolMapper = AIToolDataHelper.getInstance().getAIToolMapper();
+        accessKeyMapper = MCPAccessKeyDataHelper.getInstance().getMCPAccessKeyMapper();
+        toolMapper = MCPToolDataHelper.getInstance().getMCPToolMapper();
         MCPdirectGatewayApplication.setFactory(this);
 //        executorService = Executors.newFixedThreadPool(200);
         engine.joinBroadcastGroup(new USL("aitools","mcpdirect.ai"),
@@ -100,7 +98,7 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
     public AIToolDirectory listUserTools(
             String aiportAuth
     ) throws Exception {
-        AIPortAccessKeyCredential key = accountMapper.selectAccessKeyCredentialById(MCPdirectAccessKeyValidator.hashCode(aiportAuth));
+        AIPortAccessKeyCredential key = accessKeyMapper.selectAccessKeyCredentialById(MCPdirectAccessKeyValidator.hashCode(aiportAuth));
         AIToolDirectory directory = AIToolDirectory.create(key.userId);
         List<AIPortTool> aiPortTools = toolMapper.selectPermittedTools(key.id);
         aiPortTools.addAll(toolMapper.selectVirtualPermittedTools(key.id));

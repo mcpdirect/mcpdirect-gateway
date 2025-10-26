@@ -81,7 +81,7 @@ public class MCPdirectTransportProvider implements McpServerTransportProvider{
 		return new McpServerFeatures.SyncToolSpecification(tool, null,(exchange, request) -> {
 			try {
 				ToolContext toolContext = exchange!=null?new ToolContext(Map.of(TOOL_CONTEXT_MCP_EXCHANGE_KEY, exchange)):null;
-				String callResult = toolCallback.call(ModelOptionsUtils.toJsonString(request), toolContext);
+				String callResult = toolCallback.call(ModelOptionsUtils.toJsonString(request.arguments()), toolContext);
 				if (mimeType != null && mimeType.toString().startsWith("image")) {
 					return new McpSchema.CallToolResult(List
 							.of(new McpSchema.ImageContent(List.of(McpSchema.Role.ASSISTANT), null, callResult, mimeType.toString())),

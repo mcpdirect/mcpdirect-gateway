@@ -5,7 +5,7 @@ import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 
-public interface TeamToolMakerMapper {
+public interface MCPTeamToolMakerMapper {
     String TEAM_TOOL_MAKER_TABLE = "aitool.team_tool_maker";
     String SELECT_FROM_TEAM_TOOL_MAKER_TABLE =
             "SELECT tool_maker_id toolMakerId, team_id teamId, status, created, last_updated lastUpdated FROM "+ TEAM_TOOL_MAKER_TABLE +"\n";

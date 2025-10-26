@@ -254,13 +254,15 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
                     response.setCharacterEncoding(UTF_8);
                     response.getWriter().write(objectMapper.writeValueAsString(tools));
                 }else if((toolSpecification=provider.getTool(tool))!=null){
-                    Map<String,Object> params = objectMapper.readValue(
-                            inputParam.get(), new TypeRef<>() {}
+//                    Map<String,Object> params = objectMapper.readValue(
+//                            inputParam.get(), new TypeRef<>() {}
+//                    );
+                    McpSchema.CallToolRequest callToolRequest = objectMapper.convertValue(inputParam.get(),
+                            new TypeRef<>() {});
+                    Object mcpCallResult = toolSpecification.callHandler().apply(
+                            null, callToolRequest
                     );
-                    Object mcpCallResult = toolSpecification.call().apply(
-                            null, params
-                    );
-                    logger.debug("Received tool/call request: {}", params);
+                    logger.debug("Received tool/call request: {}", callToolRequest);
                     response.setContentType(APPLICATION_JSON);
                     response.setCharacterEncoding(UTF_8);
                     response.getWriter().write(objectMapper.writeValueAsString(mcpCallResult));
@@ -349,7 +351,7 @@ public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
 				return new McpError("Tool not found: " + callToolRequest.name());
 			}
 
-			Object mcpCallResult = toolSpecification.call().apply(null, callToolRequest.arguments());
+			Object mcpCallResult = toolSpecification.callHandler().apply(null, callToolRequest);
 			return new McpSchema.JSONRPCResponse(McpSchema.JSONRPC_VERSION, request.id(), mcpCallResult, null);
 		}
 		return "{}";

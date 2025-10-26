@@ -1,17 +1,17 @@
 package ai.mcpdirect.gateway.dao;
 
-import ai.mcpdirect.gateway.dao.mapper.account.AccountMapper;
+import ai.mcpdirect.gateway.dao.mapper.account.MCPAccessKeyMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class AccountDataHelper extends DAOHelper{
-    protected static AccountDataHelper INSTANCE;
-    public static AccountDataHelper getInstance(){
+public class MCPAccessKeyDataHelper extends MCPDAOHelper {
+    protected static MCPAccessKeyDataHelper INSTANCE;
+    public static MCPAccessKeyDataHelper getInstance(){
         return INSTANCE;
     }
 
-    public AccountDataHelper(){
+    public MCPAccessKeyDataHelper(){
         INSTANCE = this;
     }
 
@@ -32,14 +32,14 @@ public class AccountDataHelper extends DAOHelper{
     //         praProperties.put(property.key,property);
     //     }
     // }
-    private AccountMapper mapper;
+    private MCPAccessKeyMapper mapper;
 
-    public AccountMapper getAccountMapper() {
+    public MCPAccessKeyMapper getMCPAccessKeyMapper() {
         return mapper;
     }
 
     @Autowired
-    public void setAccountMapper(AccountMapper mapper) {
+    public void setMCPAccessKeyMappers(MCPAccessKeyMapper mapper) {
         this.mapper = mapper;
     }
 }

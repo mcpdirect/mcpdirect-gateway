@@ -37,6 +37,8 @@
 - Updated AIToolHubServiceHandler to use USL constant instead of string literal for service creation
 - Renamed keyId to apiKeyHash for consistency in AIToolHubServiceHandler
 - Cleaned up deprecated or unused ObjectMapper code
+- Renamed DAO and mapper classes to use MCP prefixes for better consistency (AccountDataHelper → MCPAccessKeyDataHelper, AIToolDataHelper → MCPToolDataHelper, etc.)
+- Updated application configuration and service classes to use new DAO/mapper class names
 
 ## [1.1.2] - 2025-09-10
 

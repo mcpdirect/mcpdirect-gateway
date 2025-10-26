@@ -3,9 +3,8 @@ package ai.mcpdirect.gateway.dao.mapper.account;
 import ai.mcpdirect.gateway.dao.entity.account.AIPortAccessKeyCredential;
 import org.apache.ibatis.annotations.*;
 
-import java.util.List;
-
-public interface AccessKeyMapper {
+@Mapper
+public interface MCPAccessKeyMapper {
     String accessKeyTable="account.access_key";
     String selectAccessKeyCredential = """
             SELECT id,

@@ -6,7 +6,7 @@ import org.apache.ibatis.annotations.*;
 import java.util.List;
 
 //@Mapper
-public interface ToolAgentMapper {
+public interface MCPToolAgentMapper {
 
     String TABLE_NAME = "aitool.tool_agent";
     String SELECT_FIELDS = "id, user_id userId, engine_id engineId, created, device, name, tags, status,device_id";

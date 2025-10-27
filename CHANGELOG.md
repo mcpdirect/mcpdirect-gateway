@@ -47,6 +47,8 @@
 - Improved error handling in AITool class to return proper MCP schema responses
 - Added ResponseOfAIService class for better response structure handling
 - Updated permission checks to allow agent_status > -1 instead of only = 1 for more flexible access control
+- Improved error messages in AITool to use more professional language ("notify user" instead of "tell user")
+- Updated tool availability message to be clearer when a tool is unavailable
 
 ## [1.1.2] - 2025-09-10
 

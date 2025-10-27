@@ -102,7 +102,7 @@ public class AITool implements ToolCallback{
                 case Service.SERVICE_NOT_FOUND -> {
                     error = new McpSchema.CallToolResult(
                             "Caught Exception. Error: Error "+Service.SERVICE_NOT_FOUND+";"+
-                            "Tool not found. Please tell user the tool maybe deprecated",true);
+                            "Tool not found. Please notify user that the tool maybe deprecated",true);
 //                    resp = """
 //                           {
 //                           "content":[{
@@ -116,7 +116,7 @@ public class AITool implements ToolCallback{
                 case Service.SERVICE_UNAUTHORIZED -> {
                     error = new McpSchema.CallToolResult(
                             "Caught Exception. Error: Error "+Service.SERVICE_UNAUTHORIZED+";"+
-                            "Unauthorized call. Please tell user to check MCPDirect Agent Key permissions",true);
+                            "Unauthorized call. Please notify user to check MCPDirect Agent Key permissions",true);
 //                    resp = """
 //                           {
 //                           "content":[{
@@ -131,7 +131,7 @@ public class AITool implements ToolCallback{
                 default -> {
                     error = new McpSchema.CallToolResult(
                             "Caught Exception. Error: Error "+Service.SERVICE_FAILED+";"+
-                            "Tool not ready. Please tell user to check the tool status and try again",true);
+                            "This tool is unavailable. Please notify user to check the tool status",true);
 //                    resp = """
 //                           {
 //                           "content":[{

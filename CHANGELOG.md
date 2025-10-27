@@ -39,6 +39,8 @@
 - Cleaned up deprecated or unused ObjectMapper code
 - Renamed DAO and mapper classes to use MCP prefixes for better consistency (AccountDataHelper → MCPAccessKeyDataHelper, AIToolDataHelper → MCPToolDataHelper, etc.)
 - Updated application configuration and service classes to use new DAO/mapper class names
+- Improved performance in AIToolHubServiceHandler by optimizing tool retrieval and using HashSet for better deduplication
+- Updated AIToolHubServiceHandler to use more efficient stream operations and proper sorting
 
 ## [1.1.2] - 2025-09-10
 

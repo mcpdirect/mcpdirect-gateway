@@ -1,9 +1,6 @@
 package ai.mcpdirect.gateway.service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -100,15 +97,18 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
     ) throws Exception {
         AIPortAccessKeyCredential key = accessKeyMapper.selectAccessKeyCredentialById(MCPdirectAccessKeyValidator.hashCode(aiportAuth));
         AIToolDirectory directory = AIToolDirectory.create(key.userId);
-        List<AIPortTool> aiPortTools = toolMapper.selectPermittedTools(key.id);
-        aiPortTools.addAll(toolMapper.selectVirtualPermittedTools(key.id));
         Map<Long,AIPortTool> aiPortToolMap = new HashMap<>();
+        List<AIPortTool> aiPortTools = toolMapper.selectPermittedTools(key.id);
         for (AIPortTool aiPortTool : aiPortTools) {
             aiPortToolMap.put(aiPortTool.id,aiPortTool);
         }
-        aiPortTools = aiPortToolMap.values().stream().toList();
-        List<Long> agentIds = new ArrayList<>();
-        List<Long> makerIds = new ArrayList<>();
+        aiPortTools = toolMapper.selectVirtualPermittedTools(key.id);
+        for (AIPortTool aiPortTool : aiPortTools) {
+            aiPortToolMap.put(aiPortTool.id,aiPortTool);
+        }
+        aiPortTools = aiPortToolMap.values().stream().sorted(Comparator.comparingLong(t-> t.agentId)).toList();
+        HashSet<Long> agentIds = new HashSet<>();
+        HashSet<Long> makerIds = new HashSet<>();
         for (AIPortTool aiPortTool : aiPortTools){
             agentIds.add(aiPortTool.agentId);
             makerIds.add(aiPortTool.makerId);
@@ -118,9 +118,9 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
             directory.tools = Map.of();
             return directory;
         }
-        Map<Long, AIPortToolAgent> agentMap = toolMapper.selectToolAgentByIds(agentIds).stream()
+        Map<Long, AIPortToolAgent> agentMap = toolMapper.selectToolAgentByIds(agentIds.stream().toList()).stream()
                 .collect(Collectors.toMap(a -> a.id, a -> a));
-        Map<Long, AIPortToolMaker> makerMap = toolMapper.selectToolMakerByIds(makerIds).stream()
+        Map<Long, AIPortToolMaker> makerMap = toolMapper.selectToolMakerByIds(makerIds.stream().toList()).stream()
                 .collect(Collectors.toMap(a -> a.id, a -> a));
         Map<Long,List<AIPortTeamToolMaker>> teamToolMakerMap = new HashMap<>();
         List<AIPortTeamToolMaker> teamToolMakers = toolMapper.selectTeamToolMakerByMemberId(key.userId);

@@ -1,17 +1,15 @@
 package ai.mcpdirect.gateway.service;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 import ai.mcpdirect.gateway.dao.MCPToolDataHelper;
 import ai.mcpdirect.gateway.dao.MCPAccessKeyDataHelper;
 import ai.mcpdirect.gateway.dao.entity.account.AIPortAccessKeyCredential;
-import ai.mcpdirect.gateway.dao.entity.aitool.AIPortTeamToolMaker;
-import ai.mcpdirect.gateway.dao.entity.aitool.AIPortTool;
-import ai.mcpdirect.gateway.dao.entity.aitool.AIPortToolAgent;
-import ai.mcpdirect.gateway.dao.entity.aitool.AIPortToolMaker;
+import ai.mcpdirect.gateway.dao.entity.aitool.*;
 import ai.mcpdirect.gateway.dao.mapper.account.MCPAccessKeyMapper;
+import ai.mcpdirect.gateway.dao.mapper.aitool.MCPToolLogMapper;
 import ai.mcpdirect.gateway.dao.mapper.aitool.MCPToolMapper;
 import ai.mcpdirect.gateway.mcp.MCPdirectTransportProvider;
 import ai.mcpdirect.util.MCPdirectAccessKeyValidator;
@@ -31,12 +29,17 @@ import org.slf4j.LoggerFactory;
 @ServiceName("aitools.hub")
 @ServiceRequestMapping("/aitools/hub/")
 public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactory,ServiceBroadcastListener {
+    private static final ConcurrentLinkedQueue<AIPortToolLog> TOOL_LOGS = new ConcurrentLinkedQueue<>();
+    public static void recordToolLog(long userId,long keyId,long toolId){
+        TOOL_LOGS.add(new AIPortToolLog(userId,keyId,toolId));
+    }
     private static final Logger LOG = LoggerFactory.getLogger(AIToolHubServiceHandler.class);
 //    aitools.discovery@mcpdirect.ai/list/user/tools
     public static final USL USL_LIST_USER_TOOLS = new USL("aitools.discovery","mcpdirect.ai","list/user/tools");
     private ServiceEngine engine;
     private MCPAccessKeyMapper accessKeyMapper;
     private MCPToolMapper toolMapper;
+    private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
     @ServiceRequestInit
     public void init(ServiceEngine engine) {
         this.engine = engine;
@@ -46,6 +49,47 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
 //        executorService = Executors.newFixedThreadPool(200);
         engine.joinBroadcastGroup(new USL("aitools","mcpdirect.ai"),
                 "", AUDIENCES_PEERS|AUDIENCES_LOCAL, this);
+
+        scheduledExecutorService.scheduleWithFixedDelay(()->{
+            try {
+                MCPToolDataHelper.getInstance().executeSql(sqlSession->{
+                    int count = 0;
+                    if(!TOOL_LOGS.isEmpty()) {
+                        Map<Long,Integer> keyUsage = new HashMap<>();
+                        Map<Long,Integer> toolUsage = new HashMap<>();
+                        MCPToolLogMapper mapper = sqlSession.getMapper(MCPToolMapper.class);
+                        AIPortToolLog log;
+                        while(count<1000&&(log=TOOL_LOGS.poll())!=null){
+                            Integer k = keyUsage.get(log.keyId);
+                            if(k==null){
+                                k = 0;
+                            }
+                            keyUsage.put(log.keyId,++k);
+
+                            Integer t = toolUsage.get(log.toolId);
+                            if(t==null){
+                                t = 0;
+                            }
+                            toolUsage.put(log.toolId,++t);
+
+                            mapper.insertToolLog(log);
+                            count++;
+                        }
+                        MCPToolMapper toolMapper = sqlSession.getMapper(MCPToolMapper.class);
+                        for (Map.Entry<Long, Integer> entry : toolUsage.entrySet()) {
+                            toolMapper.updateToolUsage(entry.getKey(),entry.getValue());
+                        }
+                        MCPAccessKeyMapper keyMapper = sqlSession.getMapper(MCPAccessKeyMapper.class);
+                        for (Map.Entry<Long, Integer> entry : keyUsage.entrySet()) {
+                            keyMapper.updateAccessKeyUsage(entry.getKey(),entry.getValue());
+                        }
+                    }
+                   return count;
+                });
+            } catch (Exception e) {
+                LOG.error("insertToolLog",e);
+            }
+        },0,10,TimeUnit.SECONDS);
     }
 
     public static class UpdatedTool{
@@ -93,9 +137,11 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
     final MCPdirectAccessKeyCache cache = new MCPdirectAccessKeyCache();
 
     public AIToolDirectory listUserTools(
-            String aiportAuth
+            long keyId
     ) throws Exception {
-        AIPortAccessKeyCredential key = accessKeyMapper.selectAccessKeyCredentialById(MCPdirectAccessKeyValidator.hashCode(aiportAuth));
+//        AIPortAccessKeyCredential key = accessKeyMapper.selectAccessKeyCredentialById(
+//                MCPdirectAccessKeyValidator.hashCode(keyId));
+        AIPortAccessKeyCredential key = accessKeyMapper.selectAccessKeyCredentialById(keyId);
         AIToolDirectory directory = AIToolDirectory.create(key.userId);
         Map<Long,AIPortTool> aiPortToolMap = new HashMap<>();
         List<AIPortTool> aiPortTools = toolMapper.selectPermittedTools(key.id);
@@ -154,6 +200,7 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
                     tools.engineId = agentMap.get(agentId).engineId;
                 }
                 AIToolDirectory.Description d = new AIToolDirectory.Description();
+                d.toolId = tool.id;
                 d.name = tool.name;
                 d.tags = makerMap.get(tool.makerId).tags;
                 d.metaData = JSON.fromJson(tool.metaData, new TypeReference<>() {
@@ -184,7 +231,7 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
                 provider.closeGracefully();
             }
 
-            AIToolDirectory ap = listUserTools(apiKey);
+            AIToolDirectory ap = listUserTools(apiKeyHash);
             provider = createMCPdirectTransportProvider(ap.userId,apiKey);
             for (AIToolDirectory.Tools tools : ap.tools.values())
                 for (AIToolDirectory.Description d : tools.descriptions) {
@@ -201,7 +248,7 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
                     }else name="_"+name;
                     if(name.length()>54) name = name.substring(0,54);
                     name += ("_"+Long.toString((usl.toString().hashCode()&0xFFFFFFFFL),32));
-                    provider.addTool(name, description, s.requestSchema,usl, engine);
+                    provider.addTool(ap.userId,apiKeyHash,d.toolId,name, description, s.requestSchema,usl, engine);
                 }
             cache.addAccessKey(ap.userId,apiKeyHash,1,apiKey);
             cache.toolsUpdate(ap.userId,System.currentTimeMillis());

@@ -1,5 +1,7 @@
 package ai.mcpdirect.gateway.util;
 
+import ai.mcpdirect.gateway.dao.entity.aitool.AIPortToolLog;
+import ai.mcpdirect.gateway.service.AIToolHubServiceHandler;
 import appnet.hstp.ServiceHeaders;
 import ai.mcpdirect.util.MCPdirectAccessKeyValidator;
 import appnet.hstp.engine.util.JSON;
@@ -31,7 +33,16 @@ public class AITool implements ToolCallback{
     private final USL usl;
     private final McpSyncServer server;
     private final ServiceHeaders headers;
-    public AITool(String secretKey,McpSyncServer server,String name,String description,String inputSchema,USL usl,ServiceEngine engine){
+    private final long userId;
+    private final long keyId;
+    private final long toolId;
+    public AITool(long userId,long keyId,long toolId,
+            String secretKey,McpSyncServer server,
+                  String name,String description,String inputSchema,
+                  USL usl,ServiceEngine engine){
+        this.userId = userId;
+        this.keyId = keyId;
+        this.toolId = toolId;
         headers = new ServiceHeaders().addHeader("X-MCPdirect-Key-ID",
                 String.valueOf(MCPdirectAccessKeyValidator.hashCode(secretKey)));
         this.server = server;
@@ -90,6 +101,7 @@ public class AITool implements ToolCallback{
             if(errorCode==0){
                 ResponseOfAIService aiResp = JSON.fromJson(service.getResponseMessageString(), ResponseOfAIService.class);
                 resp = aiResp.data;
+                AIToolHubServiceHandler.recordToolLog(userId,keyId,toolId);
             }else{
                 LOG.error("response({},{}):{},{}",usl,toolInput,errorCode,service.getErrorMessage());
             }

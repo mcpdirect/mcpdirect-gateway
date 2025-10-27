@@ -6,6 +6,7 @@ import java.util.*;
 
 public class AIToolDirectory {
     public static class Description{
+        public long toolId;
         public String name;
 //        public List<String> tags;
         public String tags;

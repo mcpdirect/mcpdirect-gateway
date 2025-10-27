@@ -96,9 +96,12 @@ public class MCPdirectTransportProvider implements McpServerTransportProvider{
 			}
 		});
 	}
-	public void addTool(String name,String description,String inputSchema,USL usl,ServiceEngine engine){
+	public void addTool(long userId,long keyId,long toolId,
+                        String name,String description,String inputSchema,
+                        USL usl,ServiceEngine engine){
 
-		AITool aiTool = new AITool(secretKey, server, name, description, inputSchema, usl, engine);
+		AITool aiTool = new AITool(userId,keyId,toolId,
+                secretKey, server, name, description, inputSchema, usl, engine);
 		SyncToolSpecification newTool = toSyncToolSpecification(aiTool, null);
 		try {
 			server.addTool(newTool);

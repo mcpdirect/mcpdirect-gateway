@@ -14,10 +14,12 @@ public interface MCPAccessKeyMapper {
             expiration_date expirationDate,
             user_id userId,
             user_roles userRoles,
-            usage_amount usageAmount,
             created FROM
             """+accessKeyTable+"\n";
 
     @Select(selectAccessKeyCredential+"where id=#{accessKeyId}")
     AIPortAccessKeyCredential selectAccessKeyCredentialById(@Param("accessKeyId") long accessKeyId);
+
+    @Update("UPDATE "+accessKeyTable+" SET usage=usage+#{usage} WHERE id=#{id}")
+    void updateAccessKeyUsage(@Param("id")long id,@Param("usage")int usage);
 }

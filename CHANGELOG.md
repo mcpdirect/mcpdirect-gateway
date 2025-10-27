@@ -25,12 +25,19 @@
 - Entity classes for AI tool management (AIPortTool, AIPortToolAgent, etc.)
 - MyBatis mappers for database operations (AccountMapper, AIToolMapper, etc.)
 - MCPToolSchema utility for tool schema management
+- Tool usage logging functionality with AIPortToolLog entity and MCPToolLogMapper
+- Batch SQL execution support with SqlBatchExecutor interface
+- Tool usage tracking that records tool calls and updates usage statistics
+- Scheduled background task to process tool logs in batches for performance
 
 ### Fixed
 - Improved path parsing logic for authentication extraction
 - Enhanced error handling for tool API endpoints
 - Updated tool specification creation to use proper builder pattern
 - Fixed unmarshalling method to use McpJsonMapper instead of Jackson ObjectMapper
+- Improved error message language in AITool to use more professional terms
+- Updated tool unavailability message to be clearer when a tool is unavailable
+- Updated permission checks to allow agent_status > -1 instead of only = 1 for more flexible access control
 
 ### Refactored
 - Replaced direct McpSchema.Tool constructor with builder pattern in MCPdirectTransportProvider

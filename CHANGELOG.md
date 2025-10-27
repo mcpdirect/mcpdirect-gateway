@@ -42,6 +42,12 @@
 - Improved performance in AIToolHubServiceHandler by optimizing tool retrieval and using HashSet for better deduplication
 - Updated AIToolHubServiceHandler to use more efficient stream operations and proper sorting
 
+### Fixed
+- Updated MCPdirectTransportProvider to properly deserialize tool results using JSON instead of returning raw text
+- Improved error handling in AITool class to return proper MCP schema responses
+- Added ResponseOfAIService class for better response structure handling
+- Updated permission checks to allow agent_status > -1 instead of only = 1 for more flexible access control
+
 ## [1.1.2] - 2025-09-10
 
 ### Changed

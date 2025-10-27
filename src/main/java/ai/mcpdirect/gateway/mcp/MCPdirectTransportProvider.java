@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import appnet.hstp.engine.util.JSON;
 import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.json.TypeRef;
 import io.modelcontextprotocol.server.McpServerFeatures;
@@ -87,10 +88,11 @@ public class MCPdirectTransportProvider implements McpServerTransportProvider{
 							.of(new McpSchema.ImageContent(List.of(McpSchema.Role.ASSISTANT), null, callResult, mimeType.toString())),
 							false);
 				}
-				return new McpSchema.CallToolResult(List.of(new McpSchema.TextContent(callResult)), false);
+//				return new McpSchema.CallToolResult(List.of(new McpSchema.TextContent(callResult)), false);
+                return JSON.fromJson(callResult,McpSchema.CallToolResult.class);
 			}
 			catch (Exception e) {
-				return new McpSchema.CallToolResult(List.of(new McpSchema.TextContent(e.getMessage())), true);
+				return new McpSchema.CallToolResult(e.getMessage(), true);
 			}
 		});
 	}

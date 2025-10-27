@@ -2,6 +2,8 @@ package ai.mcpdirect.gateway.util;
 
 import appnet.hstp.ServiceHeaders;
 import ai.mcpdirect.util.MCPdirectAccessKeyValidator;
+import appnet.hstp.engine.util.JSON;
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -64,6 +66,11 @@ public class AITool implements ToolCallback{
         return call(toolInput,clientInfo);
     }
     private static final String MCPDirectStudioClient = "mcpdirectstudio#";
+    public static class ResponseOfAIService {
+        public String status = "failed";
+        public String message;
+        public String data;
+    }
     public @NonNull String call(@NonNull String toolInput,McpSchema.Implementation  clientInfo) {
         if(clientInfo!=null){
             String name = clientInfo.name();
@@ -81,25 +88,64 @@ public class AITool implements ToolCallback{
                     content(toolInput).request(engine);
             errorCode = service.getErrorCode();
             if(errorCode==0){
-                resp = service.getResponseMessageString();
+                ResponseOfAIService aiResp = JSON.fromJson(service.getResponseMessageString(), ResponseOfAIService.class);
+                resp = aiResp.data;
             }else{
                 LOG.error("response({},{}):{},{}",usl,toolInput,errorCode,service.getErrorMessage());
             }
         } catch (Exception e) {
             LOG.warn("call({},{})",usl,toolInput,e);
         }
-        if(resp==null){
+        if(resp==null) try{
+            McpSchema.CallToolResult error = null;
             switch (errorCode){
                 case Service.SERVICE_NOT_FOUND -> {
-                    resp = "Tool not found. Please tell user the tool maybe deprecated";
+                    error = new McpSchema.CallToolResult(
+                            "Caught Exception. Error: Error "+Service.SERVICE_NOT_FOUND+";"+
+                            "Tool not found. Please tell user the tool maybe deprecated",true);
+//                    resp = """
+//                           {
+//                           "content":[{
+//                           "type":"text",
+//                           "text":"Tool not found. Please tell user the tool maybe deprecated"
+//                           }],
+//                           "isError":true
+//                           }
+//                           """;
                 }
                 case Service.SERVICE_UNAUTHORIZED -> {
-                    resp = "Unauthorized call. Please tell user to check MCPDirect Agent Key permissions";
+                    error = new McpSchema.CallToolResult(
+                            "Caught Exception. Error: Error "+Service.SERVICE_UNAUTHORIZED+";"+
+                            "Unauthorized call. Please tell user to check MCPDirect Agent Key permissions",true);
+//                    resp = """
+//                           {
+//                           "content":[{
+//                           "type":"text",
+//                           "text":"Unauthorized call. Please tell user to check MCPDirect Agent Key permissions"
+//                           }],
+//                           "isError":true
+//                           }
+//                           """;
+//                    resp = "Unauthorized call. Please tell user to check MCPDirect Agent Key permissions";
                 }
                 default -> {
-                    resp = "Tool not ready. Please tell user to check the tool status and try again";
+                    error = new McpSchema.CallToolResult(
+                            "Caught Exception. Error: Error "+Service.SERVICE_FAILED+";"+
+                            "Tool not ready. Please tell user to check the tool status and try again",true);
+//                    resp = """
+//                           {
+//                           "content":[{
+//                           "type":"text",
+//                           "text":"Tool not ready. Please tell user to check the tool status and try again"
+//                           }],
+//                           "isError":true
+//                           }
+//                           """;
+//                    resp = "Tool not ready. Please tell user to check the tool status and try again";
                 }
             }
+            resp = JSON.toJson(error);
+        } catch (Exception ignore) {
         }
         return resp;
     }

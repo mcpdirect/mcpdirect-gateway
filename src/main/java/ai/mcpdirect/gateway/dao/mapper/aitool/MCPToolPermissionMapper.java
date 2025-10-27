@@ -15,7 +15,7 @@ public interface MCPToolPermissionMapper {
 
     @Select("SELECT "+SELECT_TOOL_FIELDS+",t.maker_id makerId FROM "+TABLE_NAME+" tp\n" +
             "LEFT JOIN "+ MCPToolMapper.TABLE_NAME+" t ON tp.tool_id = t.id\n" +
-            "AND t.status=1 AND t.agent_status=1 AND t.maker_status=1\n" +
+            "AND t.status=1 AND t.agent_status>-1 AND t.maker_status=1\n" +
             "WHERE tp.access_key_id=#{accessKeyId} AND tp.status=1\n" +
             "ORDER BY t.agent_id")
     List<AIPortTool> selectPermittedTools(@Param("accessKeyId") long accessKeyId);
@@ -23,7 +23,7 @@ public interface MCPToolPermissionMapper {
     @Select("SELECT "+SELECT_TOOL_FIELDS+",vt.maker_id makerId  FROM "+TABLE_NAME_V+" tp\n" +
             "LEFT JOIN "+ MCPToolMapper.TABLE_NAME_V+" vt ON tp.tool_id = vt.id AND vt.maker_status = 1\n" +
             "LEFT JOIN "+ MCPToolMapper.TABLE_NAME+" t ON vt.tool_id = t.id\n" +
-            "AND t.status=1 AND t.agent_status=1 AND t.maker_status=1\n" +
+            "AND t.status=1 AND t.agent_status>-1 AND t.maker_status=1\n" +
             "WHERE tp.access_key_id=#{accessKeyId} AND tp.status=1\n" +
             "ORDER BY t.agent_id")
     List<AIPortTool> selectVirtualPermittedTools(@Param("accessKeyId") long accessKeyId);

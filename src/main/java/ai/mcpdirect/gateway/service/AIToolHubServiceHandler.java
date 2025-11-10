@@ -11,13 +11,12 @@ import ai.mcpdirect.gateway.dao.entity.aitool.*;
 import ai.mcpdirect.gateway.dao.mapper.account.MCPAccessKeyMapper;
 import ai.mcpdirect.gateway.dao.mapper.aitool.MCPToolLogMapper;
 import ai.mcpdirect.gateway.dao.mapper.aitool.MCPToolMapper;
-import ai.mcpdirect.gateway.mcp.MCPdirectTransportProvider;
+import ai.mcpdirect.gateway.mcp.*;
 import ai.mcpdirect.util.MCPdirectAccessKeyValidator;
 import appnet.hstp.*;
 import appnet.hstp.annotation.*;
 import appnet.hstp.engine.util.JSON;
 import ai.mcpdirect.gateway.MCPdirectGatewayApplication;
-import ai.mcpdirect.gateway.mcp.MCPdirectTransportProviderFactory;
 import ai.mcpdirect.gateway.util.AIToolDirectory;
 import ai.mcpdirect.gateway.util.MCPdirectAccessKeyCache;
 
@@ -28,7 +27,7 @@ import org.slf4j.LoggerFactory;
 
 @ServiceName("aitools.hub")
 @ServiceRequestMapping("/aitools/hub/")
-public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactory,ServiceBroadcastListener {
+public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCPdirectTransportProviderFactory,ServiceBroadcastListener {
     private static final ConcurrentLinkedQueue<AIPortToolLog> TOOL_LOGS = new ConcurrentLinkedQueue<>();
     public static void recordToolLog(long userId,long keyId,long toolId){
         TOOL_LOGS.add(new AIPortToolLog(userId,keyId,toolId));
@@ -46,6 +45,7 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
         accessKeyMapper = MCPAccessKeyDataHelper.getInstance().getMCPAccessKeyMapper();
         toolMapper = MCPToolDataHelper.getInstance().getMCPToolMapper();
         MCPdirectGatewayApplication.setFactory(this);
+        MCPdirectGatewayApplication.setMCPdirectToolProviderFactory(this);
 //        executorService = Executors.newFixedThreadPool(200);
         engine.joinBroadcastGroup(new USL("aitools","mcpdirect.ai"),
                 "", AUDIENCES_PEERS|AUDIENCES_LOCAL, this);
@@ -122,7 +122,7 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
                                 MCPdirectTransportProvider provider = providers.remove(MCPdirectAccessKeyValidator.hashCode(old.aik));
                                 if(provider!=null){
                                     provider.closeGracefully();
-                                    cache.addAccessKey(accessKey.userId,accessKey.id,-1,null);
+                                    cache.addAccessKey(accessKey.userId,accessKey.id,-1,null,accessKey.name);
                                 }
                             }
                         }
@@ -134,6 +134,7 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
         }
     }
     final ConcurrentHashMap<Long, MCPdirectTransportProvider> providers = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<Long, MCPdirectToolProvider> toolProviders = new ConcurrentHashMap<>();
     final MCPdirectAccessKeyCache cache = new MCPdirectAccessKeyCache();
 
     public AIToolDirectory listUserTools(
@@ -143,6 +144,7 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
 //                MCPdirectAccessKeyValidator.hashCode(keyId));
         AIPortAccessKeyCredential key = accessKeyMapper.selectAccessKeyCredentialById(keyId);
         AIToolDirectory directory = AIToolDirectory.create(key.userId);
+        directory.keyName = key.name;
         Map<Long,AIPortTool> aiPortToolMap = new HashMap<>();
         List<AIPortTool> aiPortTools = toolMapper.selectPermittedTools(key.id);
         for (AIPortTool aiPortTool : aiPortTools) {
@@ -250,14 +252,64 @@ public class AIToolHubServiceHandler implements MCPdirectTransportProviderFactor
                     name += ("_"+Long.toString((usl.toString().hashCode()&0xFFFFFFFFL),32));
                     provider.addTool(ap.userId,apiKeyHash,d.toolId,name, description, s.requestSchema,usl, engine);
                 }
-            cache.addAccessKey(ap.userId,apiKeyHash,1,apiKey);
+            cache.addAccessKey(ap.userId,apiKeyHash,1,apiKey,ap.keyName);
             cache.toolsUpdate(ap.userId,System.currentTimeMillis());
         }catch (Exception e){
             LOG.error("getMCPdirectTransportProvider({})",apiKey,e);
         }
         return provider;
     }
-//    @Override
+
+    @Override
+    public MCPdirectToolProvider getMCPdirectToolProvider(String apiKey) {
+        MCPdirectToolProvider provider;
+        long apiKeyHash = MCPdirectAccessKeyValidator.hashCode(apiKey);
+        MCPdirectAccessKeyCache.AccessKey accessKey = cache.getAccessKey(apiKeyHash);
+        if(accessKey!=null&&accessKey.status<1){
+            provider = toolProviders.remove(apiKeyHash);
+            if(provider!=null){
+                provider.closeGracefully();
+            }
+            return null;
+        }
+
+        provider = toolProviders.get(apiKeyHash);
+        if(provider==null||accessKey==null||cache.toolsAnnounced(accessKey.userId))try {
+            if(provider!=null){
+                providers.remove(apiKeyHash);
+                provider.closeGracefully();
+            }
+
+            AIToolDirectory ap = listUserTools(apiKeyHash);
+            provider = new MCPdirectToolProvider(ap.userId,ap.keyName,apiKey);
+            toolProviders.put(MCPdirectAccessKeyValidator.hashCode(apiKey), provider);
+//            provider = createMCPdirectTransportProvider(ap.userId,apiKey,ap.keyName);
+            for (AIToolDirectory.Tools tools : ap.tools.values())
+                for (AIToolDirectory.Description d : tools.descriptions) {
+                    String name = d.name;
+                    ServiceDescription s = d.metaData;
+                    String description = s.description;
+                    if(d.tags!=null&&!(d.tags=d.tags.trim()).isEmpty()){
+                        description+="\n\n**This tool is associated with "+d.tags+"**";
+                    }
+                    USL usl = new USL(s.serviceName,tools.engineId,s.servicePath);
+                    if(name==null||(name=name.trim()).isEmpty()){
+                        String path = s.servicePath;;
+                        name = "_"+path.substring(path.lastIndexOf("/")+1);
+                    }else name="_"+name;
+                    if(name.length()>54) name = name.substring(0,54);
+                    name += ("_"+Long.toString((usl.toString().hashCode()&0xFFFFFFFFL),32));
+                    provider.addTool(ap.userId,apiKeyHash,d.toolId,name, description, s.requestSchema,usl, engine);
+                }
+            cache.addAccessKey(ap.userId,apiKeyHash,1,apiKey,ap.keyName);
+            cache.toolsUpdate(ap.userId,System.currentTimeMillis());
+        }catch (Exception e){
+            LOG.error("getMCPdirectTransportProvider({})",apiKey,e);
+        }
+        return provider;
+    }
+
+    //    @Override
 //    public MCPdirectTransportProvider getMCPdirectTransportProvider(String apiKey) {
 //        MCPdirectTransportProvider provider;
 //        long apiKeyHash = MCPdirectAccessKeyValidator.hashCode(apiKey);

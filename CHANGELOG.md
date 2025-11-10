@@ -1,16 +1,21 @@
 # Changelog
 
-## [1.2.0] - 2025-10-08
+## [2.0.0] - 2025-10-08
 
 ### Changed
-- Upgraded hstp-service-engine version from 1.4.2 to 1.5.0
-- Upgraded MCP version from 0.12.1 to 0.14.1
-- Updated project version from 1.1.2 to 1.2.0-SNAPSHOT
-- Updated spring-ai-mcp-version from 1.0.1 to 1.1.0-M3
-- Replaced Jackson ObjectMapper with McpJsonMapper for better MCP protocol compatibility
-- Updated TypeReference to TypeRef for MCP JSON serialization/deserialization
+- Upgraded project version to 2.0.0-SNAPSHOT (major version bump)
+- Upgraded MCP version from 0.14.1 to 0.15.0
+- Upgraded logback-classic version from 1.5.16 to 1.5.20
+- Complete architectural overhaul with new tool provider pattern
+- Replaced MCPdirectGatewaySseHttpServlet with new servlet implementations (MCPdirectGatewayHttpServlet, MCPdirectGatewayStreamableHttpServlet)
 
 ### Added
+- New tool provider architecture with MCPdirectToolProvider and factory pattern
+- MCPdirectGatewayHttpServlet for standard HTTP requests
+- MCPdirectGatewayStreamableHttpServlet for streamable responses
+- MCPdirectSseToolProvider for Server-Sent Events
+- MCPdirectSteamableToolProvider for streaming responses
+- MCPdirectToolProviderFactory for creating different tool providers
 - Enhanced MCP gateway functionality with improved transport handling
 - Tool API endpoint functionality to support direct tool calls
 - New MCP endpoint constant for enhanced routing

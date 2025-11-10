@@ -31,11 +31,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@WebServlet(
-        name = "MCPdirectGatewaySseHttpServlet",
-        urlPatterns = "/*",
-        asyncSupported = true
-)
+//@WebServlet(
+//        name = "MCPdirectGatewaySseHttpServlet",
+//        urlPatterns = "/*",
+//        asyncSupported = true
+//)
 public class MCPdirectGatewaySseHttpServlet extends HttpServlet {
 
 	/** Logger for this class */

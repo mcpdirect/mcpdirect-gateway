@@ -19,6 +19,7 @@ public class AIToolDirectory {
     }
 
     public long userId;
+    public String keyName;
     public Map<String,Tools> tools = new HashMap<>();
 
     public static AIToolDirectory create(long id){

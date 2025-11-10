@@ -31,13 +31,13 @@ public class AITool implements ToolCallback{
     private final ToolDefinition toolDef;
     private final ServiceEngine engine;
     private final USL usl;
-    private final McpSyncServer server;
+//    private final McpSyncServer server;
     private final ServiceHeaders headers;
     private final long userId;
     private final long keyId;
     private final long toolId;
     public AITool(long userId,long keyId,long toolId,
-            String secretKey,McpSyncServer server,
+            String secretKey,
                   String name,String description,String inputSchema,
                   USL usl,ServiceEngine engine){
         this.userId = userId;
@@ -45,15 +45,15 @@ public class AITool implements ToolCallback{
         this.toolId = toolId;
         headers = new ServiceHeaders().addHeader("X-MCPdirect-Key-ID",
                 String.valueOf(MCPdirectAccessKeyValidator.hashCode(secretKey)));
-        this.server = server;
+//        this.server = server;
         toolDef = DefaultToolDefinition.builder().name(name).description(description).inputSchema(inputSchema).build();
         this.usl = usl;
         this.engine = engine;
     }
 
-    public McpSyncServer getMcpSyncServer() {
-        return server;
-    }
+//    public McpSyncServer getMcpSyncServer() {
+//        return server;
+//    }
 
     @Override
     public @NonNull ToolDefinition getToolDefinition() {

@@ -101,7 +101,7 @@ public class MCPdirectTransportProvider implements McpServerTransportProvider{
                         USL usl,ServiceEngine engine){
 
 		AITool aiTool = new AITool(userId,keyId,toolId,
-                secretKey, server, name, description, inputSchema, usl, engine);
+                secretKey, name, description, inputSchema, usl, engine);
 		SyncToolSpecification newTool = toSyncToolSpecification(aiTool, null);
 		try {
 			server.addTool(newTool);

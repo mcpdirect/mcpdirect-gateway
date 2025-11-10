@@ -14,8 +14,9 @@ public class MCPdirectAccessKeyCache {
         public int status;
         public String aik;
         private long created;
+        public String name;
         public AccessKey(){}
-        public AccessKey(long id,long userId,String aik){
+        public AccessKey(long id,long userId,String aik,String name){
             this.id = id;
             this.userId = userId;
             this.aik = aik;
@@ -64,8 +65,8 @@ public class MCPdirectAccessKeyCache {
 //        accessKeyUser.keys.put(keyId,new AccessKey(keyStatus,aik));
 //    }
 
-    public void addAccessKey(long userId,long keyId,int keyStatus,String aik){
-        AccessKey accessKey = secretKeyCache.computeIfAbsent(keyId, id -> new AccessKey(keyId,userId,aik));
+    public void addAccessKey(long userId,long keyId,int keyStatus,String aik,String name){
+        AccessKey accessKey = secretKeyCache.computeIfAbsent(keyId, id -> new AccessKey(keyId,userId,aik,name));
         accessKey.status = keyStatus;
         secretKeyUserCache.computeIfAbsent(userId, id -> new AccessKeyUser(userId));
     }

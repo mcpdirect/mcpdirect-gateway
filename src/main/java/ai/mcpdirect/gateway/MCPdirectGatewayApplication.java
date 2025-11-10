@@ -1,5 +1,7 @@
 package ai.mcpdirect.gateway;
 
+import ai.mcpdirect.gateway.mcp.MCPdirectToolProvider;
+import ai.mcpdirect.gateway.mcp.MCPdirectToolProviderFactory;
 import ai.mcpdirect.gateway.mcp.MCPdirectTransportProviderFactory;
 import appnet.hstp.exception.ServiceEngineException;
 import org.slf4j.Logger;
@@ -67,7 +69,17 @@ public class MCPdirectGatewayApplication implements CommandLineRunner {
 		return factory;
 	}
 
-    @Override
+    private static MCPdirectToolProviderFactory toolProviderFactory = new MCPdirectToolProviderFactory() {};
+    public static void setMCPdirectToolProviderFactory(MCPdirectToolProviderFactory factory) {
+        toolProviderFactory = factory;
+    }
+
+    public static MCPdirectToolProviderFactory getMCPdirectToolProviderFactory() {
+        return toolProviderFactory;
+    }
+
+
+@Override
     public void run(String... args) throws Exception {
         LOG.info("MCPdirectGatewayApplication started");
 //        ServiceEngineFactory.setServiceEngineIdSeed("ai.mcpdirect.gateway");

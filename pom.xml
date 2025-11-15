@@ -14,7 +14,7 @@
         <maven.test.skip>true</maven.test.skip>
         <mcp-version>0.15.0</mcp-version>
         <spring-boot-version>3.5.5</spring-boot-version>
-        <spring-ai-mcp-version>1.1.0-M3</spring-ai-mcp-version>
+        <spring-ai-mcp-version>1.1.0-RC1</spring-ai-mcp-version>
         <jedis.version>6.2.0</jedis.version>
         <mybatis-spring-boot-version>3.0.5</mybatis-spring-boot-version>
     </properties>

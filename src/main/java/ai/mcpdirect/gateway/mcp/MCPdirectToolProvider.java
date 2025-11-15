@@ -14,7 +14,6 @@ import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportPro
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -37,16 +36,22 @@ public class MCPdirectToolProvider {
     private static final McpJsonMapper jsonMapper = McpJsonMapper.getDefault();
     private static final McpTransportContextExtractor<HttpServletRequest> CONTEXT_EXTRACTOR
             = (r) -> McpTransportContext.create(Map.of("X-MCPdirect", "2.0.0"));
-
+    private static final McpSchema.ServerCapabilities SERVER_CAPABILITIES = McpSchema.ServerCapabilities.builder()
+            .tools(true)
+            .prompts(true)
+            .resources(true, true)
+            .build();
+    private final ConcurrentHashMap<String, McpServerFeatures.SyncToolSpecification> tools=new ConcurrentHashMap<>();
     private final long userId;
     private final String secretKey;
     private final String keyName;
-    private McpSyncServer sseServer;
+
+    private volatile McpSyncServer sseServer;
     private HttpServletSseServerTransportProvider sseTransport;
 
-    private McpSyncServer streamServer;
+    private volatile McpSyncServer streamServer;
     private HttpServletStreamableServerTransportProvider streamTransport;
-    private final ConcurrentHashMap<String, McpServerFeatures.SyncToolSpecification> tools=new ConcurrentHashMap<>();
+
     public MCPdirectToolProvider(long userId, String keyName, String secretKey) {
 
         this.userId = userId;
@@ -113,56 +118,47 @@ public class MCPdirectToolProvider {
         return secretKey;
     }
 
-//    public HttpServlet getTransportHttpServlet() {
-//        return transport;
-//    }
     public void closeGracefully(){
         if(sseServer!=null) sseServer.closeGracefully();
         if(streamServer!=null) streamServer.closeGracefully();
     }
-    public synchronized void sse(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        if(sseServer==null){
-            sseTransport = HttpServletSseServerTransportProvider.builder()
-                    .contextExtractor(CONTEXT_EXTRACTOR)
-                    .sseEndpoint(SSE_ENDPOINT)
-                    .messageEndpoint(secretKey.substring(4)+SSE_MSG_ENDPOINT)
-                    .keepAliveInterval(Duration.ofSeconds(180))
-                    .build();
-            McpSchema.ServerCapabilities serverCapabilities = McpSchema.ServerCapabilities.builder()
-                    .tools(true)
-                    .prompts(true)
-                    .resources(true, true)
-                    .build();
+    public void sse(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        if(sseServer==null) synchronized (this){
+            if(sseServer==null) {
+                sseTransport = HttpServletSseServerTransportProvider.builder()
+                        .contextExtractor(CONTEXT_EXTRACTOR)
+                        .sseEndpoint(secretKey.substring(4)+SSE_ENDPOINT)
+                        .messageEndpoint(secretKey.substring(4) + SSE_MSG_ENDPOINT)
+//                        .keepAliveInterval(Duration.ofSeconds(180))
+                        .build();
 
-            sseServer = McpServer.sync(sseTransport)
-                    .serverInfo(keyName, "2.0.0")
-                    .capabilities(serverCapabilities)
-                    .build();
-            for (McpServerFeatures.SyncToolSpecification tool : tools.values()) {
-                sseServer.addTool(tool);
+                sseServer = McpServer.sync(sseTransport)
+                        .serverInfo(keyName, "2.0.0")
+                        .capabilities(SERVER_CAPABILITIES)
+                        .build();
+                for (McpServerFeatures.SyncToolSpecification tool : tools.values()) {
+                    sseServer.addTool(tool);
+                }
             }
         }
         sseTransport.service(req,resp);
     }
-    public synchronized void streamable(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        if(streamServer==null) {
-            streamTransport = HttpServletStreamableServerTransportProvider.builder()
-                    .contextExtractor(CONTEXT_EXTRACTOR)
-                    .mcpEndpoint(MCP_ENDPOINT)
-                    .keepAliveInterval(Duration.ofSeconds(180))
-                    .build();
-            McpSchema.ServerCapabilities serverCapabilities = McpSchema.ServerCapabilities.builder()
-                    .tools(true)
-                    .prompts(true)
-                    .resources(true, true)
-                    .build();
+    public void streamable(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        if(streamServer==null) synchronized (this){
+            if(streamServer==null) {
+                streamTransport = HttpServletStreamableServerTransportProvider.builder()
+                        .contextExtractor(CONTEXT_EXTRACTOR)
+                        .mcpEndpoint(secretKey.substring(4) + MCP_ENDPOINT)
+//                        .keepAliveInterval(Duration.ofSeconds(180))
+                        .build();
 
-            streamServer = McpServer.sync(streamTransport)
-                    .serverInfo(keyName, "2.0.0")
-                    .capabilities(serverCapabilities)
-                    .build();
-            for (McpServerFeatures.SyncToolSpecification tool : tools.values()) {
-                streamServer.addTool(tool);
+                streamServer = McpServer.sync(streamTransport)
+                        .serverInfo(keyName, "2.0.0")
+                        .capabilities(SERVER_CAPABILITIES)
+                        .build();
+                for (McpServerFeatures.SyncToolSpecification tool : tools.values()) {
+                    streamServer.addTool(tool);
+                }
             }
         }
         streamTransport.service(req,resp);

@@ -55,6 +55,8 @@ public class MCPdirectGatewayHttpServlet extends HttpServlet {
             provider.sse(req,resp);
         }else if(mcp){
             provider.streamable(req,resp);
+        }else{
+            System.err.println(req.getRequestURI());
         }
 
     }

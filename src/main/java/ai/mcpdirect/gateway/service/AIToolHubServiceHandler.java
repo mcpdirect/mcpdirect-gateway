@@ -295,8 +295,8 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
                     USL usl = new USL(s.serviceName,tools.engineId,s.servicePath);
                     if(name==null||(name=name.trim()).isEmpty()){
                         String path = s.servicePath;;
-                        name = "_"+path.substring(path.lastIndexOf("/")+1);
-                    }else name="_"+name;
+                        name = path.substring(path.lastIndexOf("/")+1);
+                    }
                     if(name.length()>54) name = name.substring(0,54);
                     name += ("_"+Long.toString((usl.toString().hashCode()&0xFFFFFFFFL),32));
                     provider.addTool(ap.userId,apiKeyHash,d.toolId,name, description, s.requestSchema,usl, engine);

@@ -5,10 +5,9 @@ import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 import ai.mcpdirect.gateway.dao.MCPToolDataHelper;
-import ai.mcpdirect.gateway.dao.MCPAccessKeyDataHelper;
-import ai.mcpdirect.gateway.dao.entity.account.AIPortAccessKeyCredential;
+import ai.mcpdirect.gateway.dao.MCPToolAccessKeyDataHelper;
 import ai.mcpdirect.gateway.dao.entity.aitool.*;
-import ai.mcpdirect.gateway.dao.mapper.account.MCPAccessKeyMapper;
+import ai.mcpdirect.gateway.dao.mapper.aitool.MCPToolAccessKeyMapper;
 import ai.mcpdirect.gateway.dao.mapper.aitool.MCPToolLogMapper;
 import ai.mcpdirect.gateway.dao.mapper.aitool.MCPToolMapper;
 import ai.mcpdirect.gateway.mcp.*;
@@ -36,13 +35,13 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
 //    aitools.discovery@mcpdirect.ai/list/user/tools
     public static final USL USL_LIST_USER_TOOLS = new USL("aitools.discovery","mcpdirect.ai","list/user/tools");
     private ServiceEngine engine;
-    private MCPAccessKeyMapper accessKeyMapper;
+    private MCPToolAccessKeyMapper accessKeyMapper;
     private MCPToolMapper toolMapper;
     private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
     @ServiceRequestInit
     public void init(ServiceEngine engine) {
         this.engine = engine;
-        accessKeyMapper = MCPAccessKeyDataHelper.getInstance().getMCPAccessKeyMapper();
+        accessKeyMapper = MCPToolAccessKeyDataHelper.getInstance().getMCPAccessKeyMapper();
         toolMapper = MCPToolDataHelper.getInstance().getMCPToolMapper();
         MCPdirectGatewayApplication.setFactory(this);
         MCPdirectGatewayApplication.setMCPdirectToolProviderFactory(this);
@@ -59,7 +58,7 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
                         Map<Long,Integer> toolUsage = new HashMap<>();
                         MCPToolLogMapper mapper = sqlSession.getMapper(MCPToolMapper.class);
                         AIPortToolLog log;
-                        while(count<1000&&(log=TOOL_LOGS.poll())!=null){
+                        while(count<500&&(log=TOOL_LOGS.poll())!=null){
                             Integer k = keyUsage.get(log.keyId);
                             if(k==null){
                                 k = 0;
@@ -79,7 +78,7 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
                         for (Map.Entry<Long, Integer> entry : toolUsage.entrySet()) {
                             toolMapper.updateToolUsage(entry.getKey(),entry.getValue());
                         }
-                        MCPAccessKeyMapper keyMapper = sqlSession.getMapper(MCPAccessKeyMapper.class);
+                        MCPToolAccessKeyMapper keyMapper = sqlSession.getMapper(MCPToolAccessKeyMapper.class);
                         for (Map.Entry<Long, Integer> entry : keyUsage.entrySet()) {
                             keyMapper.updateAccessKeyUsage(entry.getKey(),entry.getValue());
                         }
@@ -89,7 +88,7 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
             } catch (Exception e) {
                 LOG.error("insertToolLog",e);
             }
-        },0,10,TimeUnit.SECONDS);
+        },0,3,TimeUnit.SECONDS);
     }
 
     public static class UpdatedTool{
@@ -142,7 +141,7 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
     ) throws Exception {
 //        AIPortAccessKeyCredential key = accessKeyMapper.selectAccessKeyCredentialById(
 //                MCPdirectAccessKeyValidator.hashCode(keyId));
-        AIPortAccessKeyCredential key = accessKeyMapper.selectAccessKeyCredentialById(keyId);
+        AIPortToolAccessKeyCredential key = accessKeyMapper.selectAccessKeyCredentialById(keyId);
         AIToolDirectory directory = AIToolDirectory.create(key.userId);
         directory.keyName = key.name;
         Map<Long,AIPortTool> aiPortToolMap = new HashMap<>();

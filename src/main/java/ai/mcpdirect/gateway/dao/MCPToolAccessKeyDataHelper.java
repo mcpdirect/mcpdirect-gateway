@@ -1,17 +1,17 @@
 package ai.mcpdirect.gateway.dao;
 
-import ai.mcpdirect.gateway.dao.mapper.account.MCPAccessKeyMapper;
+import ai.mcpdirect.gateway.dao.mapper.aitool.MCPToolAccessKeyMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class MCPAccessKeyDataHelper extends MCPDAOHelper {
-    protected static MCPAccessKeyDataHelper INSTANCE;
-    public static MCPAccessKeyDataHelper getInstance(){
+public class MCPToolAccessKeyDataHelper extends MCPDAOHelper {
+    protected static MCPToolAccessKeyDataHelper INSTANCE;
+    public static MCPToolAccessKeyDataHelper getInstance(){
         return INSTANCE;
     }
 
-    public MCPAccessKeyDataHelper(){
+    public MCPToolAccessKeyDataHelper(){
         INSTANCE = this;
     }
 
@@ -32,14 +32,14 @@ public class MCPAccessKeyDataHelper extends MCPDAOHelper {
     //         praProperties.put(property.key,property);
     //     }
     // }
-    private MCPAccessKeyMapper mapper;
+    private MCPToolAccessKeyMapper mapper;
 
-    public MCPAccessKeyMapper getMCPAccessKeyMapper() {
+    public MCPToolAccessKeyMapper getMCPAccessKeyMapper() {
         return mapper;
     }
 
     @Autowired
-    public void setMCPAccessKeyMappers(MCPAccessKeyMapper mapper) {
+    public void setMCPAccessKeyMappers(MCPToolAccessKeyMapper mapper) {
         this.mapper = mapper;
     }
 }

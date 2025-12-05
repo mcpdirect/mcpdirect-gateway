@@ -8,7 +8,7 @@
 //import io.modelcontextprotocol.json.McpJsonMapper;
 //import io.modelcontextprotocol.server.McpServer;
 //import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
-//import io.modelcontextprotocol.server.McpSyncServer;
+//import io.modelcontextprotocol.server.MCPdirectServer;
 //import io.modelcontextprotocol.server.McpTransportContextExtractor;
 //import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 //import io.modelcontextprotocol.spec.McpSchema;
@@ -36,7 +36,7 @@
 //
 //     private final long userId;
 //    private final String secretKey;
-//	private final McpSyncServer server;
+//	private final MCPdirectServer server;
 //    private final HttpServletStreamableServerTransportProvider transport;
 //	private final ConcurrentHashMap<String,SyncToolSpecification> tools=new ConcurrentHashMap<>();
 //    public MCPdirectSteamableToolProvider(long userId, String keyName, String secretKey) {

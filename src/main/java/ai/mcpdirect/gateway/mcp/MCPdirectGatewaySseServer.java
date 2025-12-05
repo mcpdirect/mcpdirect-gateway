@@ -38,7 +38,7 @@
 //    /**
 //     * The MCP sync server instance.
 //     */
-//    // private static McpSyncServer server;
+//    // private static MCPdirectServer server;
 //    private final MCPdirectGatewaySseHttpServlet servlet;
 ////    private final ConcurrentHashMap<Long, MCPdirectTransportProvider> mcpServers = new ConcurrentHashMap<>();
 //    // private final Map<String, AIPortMcpServerTransportProvider> providers = new ConcurrentHashMap<>();
@@ -108,7 +108,7 @@
 ////
 ////        // AIPortMcpServer transport = new AIPortMcpServer(user, secretKey, servlet, JSON);
 ////
-////        // McpSyncServer server = McpServer.sync(transport)
+////        // MCPdirectServer server = McpServer.sync(transport)
 ////        //     .serverInfo(user, "1.0.0")
 ////        //     .capabilities(serverCapabilities)
 ////        //     .build();

@@ -31,7 +31,7 @@ public class AITool implements ToolCallback{
     private final ToolDefinition toolDef;
     private final ServiceEngine engine;
     private final USL usl;
-//    private final McpSyncServer server;
+//    private final MCPdirectServer server;
     private final ServiceHeaders headers;
     private final long userId;
     private final long keyId;
@@ -51,7 +51,7 @@ public class AITool implements ToolCallback{
         this.engine = engine;
     }
 
-//    public McpSyncServer getMcpSyncServer() {
+//    public MCPdirectServer getMcpSyncServer() {
 //        return server;
 //    }
 

@@ -6,10 +6,7 @@ import appnet.hstp.USL;
 import appnet.hstp.engine.util.JSON;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.json.McpJsonMapper;
-import io.modelcontextprotocol.server.McpServer;
-import io.modelcontextprotocol.server.McpServerFeatures;
-import io.modelcontextprotocol.server.McpSyncServer;
-import io.modelcontextprotocol.server.McpTransportContextExtractor;
+import io.modelcontextprotocol.server.*;
 import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -22,12 +19,15 @@ import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.model.ModelOptionsUtils;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.util.MimeType;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 
 import static ai.mcpdirect.gateway.mcp.MCPdirectGatewayHttpServlet.*;
 
@@ -41,15 +41,17 @@ public class MCPdirectToolProvider {
             .prompts(true)
             .resources(true, true)
             .build();
-    private final ConcurrentHashMap<String, McpServerFeatures.SyncToolSpecification> tools=new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, McpServerFeatures.AsyncToolSpecification> tools=new ConcurrentHashMap<>();
     private final long userId;
     private final String secretKey;
     private final String keyName;
 
-    private volatile McpSyncServer sseServer;
+//    private volatile McpSyncServer sseServer;
+    private volatile McpAsyncServer sseServer;
     private HttpServletSseServerTransportProvider sseTransport;
 
-    private volatile McpSyncServer streamServer;
+//    private volatile McpSyncServer streamServer;
+    private volatile McpAsyncServer streamServer;
     private HttpServletStreamableServerTransportProvider streamTransport;
 
     public MCPdirectToolProvider(long userId, String keyName, String secretKey) {
@@ -86,13 +88,40 @@ public class MCPdirectToolProvider {
             }
         });
     }
+    public static McpServerFeatures.AsyncToolSpecification toAsyncToolSpecification(
+            ToolCallback toolCallback, MimeType mimeType, boolean immediate
+    ) {
+        McpSchema.Tool.Builder builder = McpSchema.Tool.builder();
+        var tool = builder.name(toolCallback.getToolDefinition().name())
+                .description(toolCallback.getToolDefinition().description())
+                .inputSchema(jsonMapper,toolCallback.getToolDefinition().inputSchema())
+                .build();
+
+        return new McpServerFeatures.AsyncToolSpecification(tool, null,(exchange, request) -> {
+            try {
+                ToolContext toolContext = exchange!=null?new ToolContext(Map.of(TOOL_CONTEXT_MCP_EXCHANGE_KEY, exchange)):null;
+                String callResult = toolCallback.call(ModelOptionsUtils.toJsonString(request.arguments()), toolContext);
+                if (mimeType != null && mimeType.toString().startsWith("image")) {
+                    return Mono.just(new McpSchema.CallToolResult(List
+                            .of(new McpSchema.ImageContent(List.of(McpSchema.Role.ASSISTANT), null, callResult, mimeType.toString())),
+                            false));
+                }
+//				return new McpSchema.CallToolResult(List.of(new McpSchema.TextContent(callResult)), false);
+                return Mono.just(JSON.fromJson(callResult,McpSchema.CallToolResult.class));
+            }
+            catch (Exception e) {
+                return Mono.just(new McpSchema.CallToolResult(e.getMessage(), true));
+            }
+        });
+    }
     public void addTool(long userId,long keyId,long toolId,
                         String name,String description,String inputSchema,
                         USL usl,ServiceEngine engine){
 
         AITool aiTool = new AITool(userId,keyId,toolId,
                 secretKey, name, description, inputSchema, usl, engine);
-        McpServerFeatures.SyncToolSpecification newTool = toSyncToolSpecification(aiTool, null);
+        McpServerFeatures.AsyncToolSpecification newTool = toAsyncToolSpecification(
+                aiTool, null,true);
         if(sseServer!=null) {
             try {
                 sseServer.addTool(newTool);
@@ -100,6 +129,7 @@ public class MCPdirectToolProvider {
                 sseServer.removeTool(name);
                 sseServer.addTool(newTool);
             }
+            sseServer.notifyToolsListChanged();
         }
         if(streamServer!=null) {
             try {
@@ -108,10 +138,11 @@ public class MCPdirectToolProvider {
                 streamServer.removeTool(name);
                 streamServer.addTool(newTool);
             }
+            streamServer.notifyToolsListChanged();
         }
         tools.put(name,newTool);
     }
-    public McpServerFeatures.SyncToolSpecification getTool(String name){
+    public McpServerFeatures.AsyncToolSpecification getTool(String name){
         return tools.get(name);
     }
     public String getApiKey(){
@@ -132,13 +163,15 @@ public class MCPdirectToolProvider {
 //                        .keepAliveInterval(Duration.ofSeconds(180))
                         .build();
 
-                sseServer = McpServer.sync(sseTransport)
-                        .serverInfo(keyName, "2.0.0")
+                sseServer = McpServer.async(sseTransport)
+                        .serverInfo(keyName, "2.2.0")
                         .capabilities(SERVER_CAPABILITIES)
+                        .tools(tools.values().stream().toList())
                         .build();
-                for (McpServerFeatures.SyncToolSpecification tool : tools.values()) {
-                    sseServer.addTool(tool);
-                }
+
+//                for (McpServerFeatures.AsyncToolSpecification tool : tools.values()) {
+//                    sseServer.addTool(tool);
+//                }
             }
         }
         sseTransport.service(req,resp);
@@ -151,14 +184,14 @@ public class MCPdirectToolProvider {
                         .mcpEndpoint(secretKey.substring(4) + MCP_ENDPOINT)
 //                        .keepAliveInterval(Duration.ofSeconds(180))
                         .build();
-
-                streamServer = McpServer.sync(streamTransport)
-                        .serverInfo(keyName, "2.0.0")
+                streamServer = McpServer.async(streamTransport)
+                        .serverInfo(keyName, "2.2.0")
                         .capabilities(SERVER_CAPABILITIES)
+                        .tools(tools.values().stream().toList())
                         .build();
-                for (McpServerFeatures.SyncToolSpecification tool : tools.values()) {
-                    streamServer.addTool(tool);
-                }
+//                for (McpServerFeatures.AsyncToolSpecification tool : tools.values()) {
+//                    streamServer.addTool(tool);
+//                }
             }
         }
         streamTransport.service(req,resp);

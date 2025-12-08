@@ -297,7 +297,8 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
                         name = path.substring(path.lastIndexOf("/")+1);
                     }
                     if(name.length()>54) name = name.substring(0,54);
-                    name += ("_"+Long.toString((usl.toString().hashCode()&0xFFFFFFFFL),32));
+//                    name += ("_"+Long.toString((usl.toString().hashCode()&0x3FFL),32));
+                    name += ("_"+Integer.toString((Long.hashCode(d.toolId)&0x3FF),32));
                     provider.addTool(ap.userId,apiKeyHash,d.toolId,name, description, s.requestSchema,usl, engine);
                 }
             cache.addAccessKey(ap.userId,apiKeyHash,1,apiKey,ap.keyName);

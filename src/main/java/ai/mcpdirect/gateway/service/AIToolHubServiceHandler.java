@@ -142,7 +142,7 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
 //        AIPortAccessKeyCredential key = accessKeyMapper.selectAccessKeyCredentialById(
 //                MCPdirectAccessKeyValidator.hashCode(keyId));
         AIPortToolAccessKeyCredential key = accessKeyMapper.selectAccessKeyCredentialById(keyId);
-        AIToolDirectory directory = AIToolDirectory.create(key.userId);
+        AIToolDirectory directory = AIToolDirectory.create(key.userId,keyId);
         directory.keyName = key.name;
         Map<Long,AIPortTool> aiPortToolMap = new HashMap<>();
         List<AIPortTool> aiPortTools = toolMapper.selectPermittedTools(key.id);
@@ -274,33 +274,36 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
 
         provider = toolProviders.get(apiKeyHash);
         if(provider==null||accessKey==null||cache.toolsAnnounced(accessKey.userId))try {
-            if(provider!=null){
-                providers.remove(apiKeyHash);
-                provider.closeGracefully();
-            }
-
             AIToolDirectory ap = listUserTools(apiKeyHash);
-            provider = new MCPdirectToolProvider(ap.userId,ap.keyName,apiKey);
-            toolProviders.put(MCPdirectAccessKeyValidator.hashCode(apiKey), provider);
-//            provider = createMCPdirectTransportProvider(ap.userId,apiKey,ap.keyName);
-            for (AIToolDirectory.Tools tools : ap.tools.values())
-                for (AIToolDirectory.Description d : tools.descriptions) {
-                    String name = d.name;
-                    ServiceDescription s = d.metaData;
-                    String description = s.description;
-                    if(d.tags!=null&&!(d.tags=d.tags.trim()).isEmpty()){
-                        description+="\n\n**This tool is associated with "+d.tags+"**";
-                    }
-                    USL usl = new USL(s.serviceName,tools.engineId,s.servicePath);
-                    if(name==null||(name=name.trim()).isEmpty()){
-                        String path = s.servicePath;;
-                        name = path.substring(path.lastIndexOf("/")+1);
-                    }
-                    if(name.length()>54) name = name.substring(0,54);
-//                    name += ("_"+Long.toString((usl.toString().hashCode()&0x3FFL),32));
-                    name += ("_"+Integer.toString((Long.hashCode(d.toolId)&0x3FF),32));
-                    provider.addTool(ap.userId,apiKeyHash,d.toolId,name, description, s.requestSchema,usl, engine);
-                }
+//            if(provider!=null){
+//                providers.remove(apiKeyHash);
+//                provider.closeGracefully();
+//            }
+            if(provider==null) {
+                provider = new MCPdirectToolProvider(ap.userId, ap.keyName, apiKey);
+                toolProviders.put(MCPdirectAccessKeyValidator.hashCode(apiKey), provider);
+            }
+            provider.addTools(ap,engine);
+////            provider = createMCPdirectTransportProvider(ap.userId,apiKey,ap.keyName);
+//            for (AIToolDirectory.Tools tools : ap.tools.values())
+//                for (AIToolDirectory.Description d : tools.descriptions) {
+//                    String name = d.name;
+//                    ServiceDescription s = d.metaData;
+//                    String description = s.description;
+//                    if(d.tags!=null&&!(d.tags=d.tags.trim()).isEmpty()){
+//                        description+="\n\n**This tool is associated with "+d.tags+"**";
+//                    }
+//                    USL usl = new USL(s.serviceName,tools.engineId,s.servicePath);
+//                    if(name==null||(name=name.trim()).isEmpty()){
+//                        String path = s.servicePath;;
+//                        name = path.substring(path.lastIndexOf("/")+1);
+//                    }
+////                    if(name.length()>54) name = name.substring(0,54);
+////                    name += ("_"+Long.toString((usl.toString().hashCode()&0x3FFL),32));
+////                    name += ("_"+Integer.toString((Long.hashCode(d.toolId)&0x3FF),32));
+//                    provider.addTool(ap.userId,apiKeyHash,d.toolId,name, description, s.requestSchema,usl, engine);
+//                }
+//            provider.notifyToolsListChanged();
             cache.addAccessKey(ap.userId,apiKeyHash,1,apiKey,ap.keyName);
             cache.toolsUpdate(ap.userId,System.currentTimeMillis());
         }catch (Exception e){

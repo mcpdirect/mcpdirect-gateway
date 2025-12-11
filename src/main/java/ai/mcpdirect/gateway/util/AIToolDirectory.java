@@ -19,12 +19,14 @@ public class AIToolDirectory {
     }
 
     public long userId;
+    public long keyId;
     public String keyName;
     public Map<String,Tools> tools = new HashMap<>();
 
-    public static AIToolDirectory create(long id){
+    public static AIToolDirectory create(long userId,long keyId){
         AIToolDirectory provider = new AIToolDirectory();
-        provider.userId=id;
+        provider.userId=userId;
+        provider.keyId = keyId;
         return provider;
     }
 }

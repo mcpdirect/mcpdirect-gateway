@@ -29,14 +29,15 @@ public class MCPdirectGatewayHttpServlet extends HttpServlet {
         if(auth==null) {
             auth = req.getHeader("X-MCPdirect-Key");
         }
-        boolean sse=false;
-        boolean mcp=false;
+        String path = req.getPathInfo();
+        boolean sse=path.endsWith(SSE_ENDPOINT);
+        boolean sseMessage = path.endsWith(SSE_MSG_ENDPOINT);
+        boolean mcp=path.endsWith(MCP_ENDPOINT);
         if(auth==null){
-            String path = req.getPathInfo();
             String[] split = path.split("/");
-            if((sse=path.endsWith(SSE_ENDPOINT))||(mcp=path.endsWith(MCP_ENDPOINT))){
+            if(sse||mcp){
                 auth = split[split.length-2];
-            }else if(path.endsWith(SSE_MSG_ENDPOINT)){
+            }else if(sseMessage){
                 sse=true;
                 auth = split[split.length-3];
             }else{

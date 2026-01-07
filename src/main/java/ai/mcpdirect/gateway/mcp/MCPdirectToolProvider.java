@@ -207,10 +207,19 @@ public class MCPdirectToolProvider {
     public void sse(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         if(sseServer==null) synchronized (this){
             if(sseServer==null) {
+                String sseEndpoint;
+                String messageEndpoint;
+                if(req.getHeader("Authorization")!=null||req.getHeader("X-MCPdirect-Key")!=null){
+                    sseEndpoint = SSE_ENDPOINT.substring(1);
+                    messageEndpoint = SSE_MSG_ENDPOINT.substring(1);
+                }else{
+                    sseEndpoint = secretKey.substring(4) + SSE_ENDPOINT;
+                    messageEndpoint = secretKey.substring(4) + SSE_MSG_ENDPOINT;
+                }
                 sseTransport = HttpServletSseServerTransportProvider.builder()
                         .contextExtractor(CONTEXT_EXTRACTOR)
-                        .sseEndpoint(secretKey.substring(4)+SSE_ENDPOINT)
-                        .messageEndpoint(secretKey.substring(4) + SSE_MSG_ENDPOINT)
+                        .sseEndpoint(sseEndpoint)
+                        .messageEndpoint(messageEndpoint)
 //                        .keepAliveInterval(Duration.ofSeconds(180))
                         .build();
 
@@ -230,9 +239,15 @@ public class MCPdirectToolProvider {
     public void streamable(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         if(streamServer==null) synchronized (this){
             if(streamServer==null) {
+                String mcpEndpoint;
+                if(req.getHeader("Authorization")!=null||req.getHeader("X-MCPdirect-Key")!=null){
+                    mcpEndpoint = MCP_ENDPOINT.substring(1);
+                }else{
+                    mcpEndpoint = secretKey.substring(4) + MCP_ENDPOINT;
+                }
                 streamTransport = HttpServletStreamableServerTransportProvider.builder()
                         .contextExtractor(CONTEXT_EXTRACTOR)
-                        .mcpEndpoint(secretKey.substring(4) + MCP_ENDPOINT)
+                        .mcpEndpoint(mcpEndpoint)
 //                        .keepAliveInterval(Duration.ofSeconds(180))
                         .build();
                 streamServer = McpServer.async(streamTransport)

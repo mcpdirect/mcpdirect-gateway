@@ -45,6 +45,8 @@ public class MCPdirectGatewayHttpServlet extends HttpServlet {
                 return;
             }
             auth = MCPdirectAccessKeyValidator.PREFIX_AIK+"-"+auth;
+        } else if(!auth.startsWith(MCPdirectAccessKeyValidator.PREFIX_AIK+"-")){
+            auth = MCPdirectAccessKeyValidator.PREFIX_AIK+"-"+auth;
         }
         MCPdirectToolProviderFactory factory = MCPdirectGatewayApplication.getMCPdirectToolProviderFactory();
         MCPdirectToolProvider provider = factory.getMCPdirectToolProvider(auth);

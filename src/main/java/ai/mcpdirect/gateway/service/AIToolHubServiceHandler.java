@@ -167,6 +167,7 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
         }
         Map<Long, AIPortToolAgent> agentMap = toolMapper.selectToolAgentByIds(agentIds.stream().toList()).stream()
                 .collect(Collectors.toMap(a -> a.id, a -> a));
+
         Map<Long, AIPortToolMaker> makerMap = toolMapper.selectToolMakerByIds(makerIds.stream().toList()).stream()
                 .collect(Collectors.toMap(a -> a.id, a -> a));
         Map<Long,List<AIPortTeamToolMaker>> teamToolMakerMap = new HashMap<>();
@@ -176,8 +177,8 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
                     k -> new ArrayList<>());
             list.add(teamToolMaker);
         }
-        long agentId = 0;
-        AIToolDirectory.Tools tools=null;
+//        long agentId = 0;
+//        AIToolDirectory.Tools tools=null;
         for (AIPortTool tool : aiPortTools) {
             List<AIPortTeamToolMaker> list = teamToolMakerMap.get(tool.makerId);
             boolean skip = false;
@@ -187,18 +188,21 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
                 }
                 skip = true;
             }
-            if(!skip) {
-                if (tool.agentId != agentId) {
-                    agentId = tool.agentId;
-                    if (tools != null) {
-                        directory.tools.put(tools.engineId, tools);
-                    }
-                    tools = null;
-                }
+            AIPortToolAgent agent;
+            if(!skip&&(agent = agentMap.get(tool.agentId))!=null) {
+//                if (tool.agentId != agentId) {
+//                    agentId = tool.agentId;
+//                    if (tools != null) {
+//                        directory.tools.put(tools.engineId, tools);
+//                    }
+//                    tools = null;
+//                }
+                AIToolDirectory.Tools tools=directory.tools.get(agent.engineId);
                 if (tools == null) {
                     tools = new AIToolDirectory.Tools();
                     tools.descriptions = new ArrayList<>();
-                    tools.engineId = agentMap.get(agentId).engineId;
+                    tools.engineId = agent.engineId;
+                    directory.tools.put(tools.engineId, tools);
                 }
                 AIToolDirectory.Description d = new AIToolDirectory.Description();
                 d.toolId = tool.id;
@@ -209,7 +213,7 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
                 tools.descriptions.add(d);
             }
         }
-        if(tools!=null) directory.tools.put(tools.engineId,tools);
+//        if(tools!=null) directory.tools.put(tools.engineId,tools);
         return directory;
     }
     @Override

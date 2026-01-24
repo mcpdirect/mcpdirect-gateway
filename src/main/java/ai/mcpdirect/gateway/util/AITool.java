@@ -112,53 +112,25 @@ public class AITool implements ToolCallback{
             McpSchema.CallToolResult error = null;
             switch (errorCode){
                 case Service.SERVICE_NOT_FOUND -> {
-                    error = new McpSchema.CallToolResult(
-                            "Caught Exception. Error: Error "+Service.SERVICE_NOT_FOUND+";"+
-                            "Tool not found. Please notify user that the tool maybe deprecated",true);
-//                    resp = """
-//                           {
-//                           "content":[{
-//                           "type":"text",
-//                           "text":"Tool not found. Please tell user the tool maybe deprecated"
-//                           }],
-//                           "isError":true
-//                           }
-//                           """;
+                    error = McpSchema.CallToolResult.builder().addTextContent(
+                            "Caught Exception, Error:  SERVICE_NOT_FOUND. Tool not found. The tool maybe deprecated"
+                    ).isError(true).build();
                 }
                 case Service.SERVICE_UNAUTHORIZED -> {
-                    error = new McpSchema.CallToolResult(
-                            "Caught Exception. Error: Error "+Service.SERVICE_UNAUTHORIZED+";"+
-                            "Unauthorized call. Please notify user to check MCPDirect Agent Key permissions",true);
-//                    resp = """
-//                           {
-//                           "content":[{
-//                           "type":"text",
-//                           "text":"Unauthorized call. Please tell user to check MCPDirect Agent Key permissions"
-//                           }],
-//                           "isError":true
-//                           }
-//                           """;
-//                    resp = "Unauthorized call. Please tell user to check MCPDirect Agent Key permissions";
+                    error = McpSchema.CallToolResult.builder().addTextContent(
+                            "Caught Exception, Error: SERVICE_UNAUTHORIZED. Unauthorized call. Please  check MCPDirect  Key permissions"
+                    ).isError(true).build();
                 }
                 default -> {
-                    error = new McpSchema.CallToolResult(
-                            "Caught Exception. Error: Error "+Service.SERVICE_FAILED+";"+
-                            "This tool is unavailable. Please notify user to check the tool status",true);
-//                    resp = """
-//                           {
-//                           "content":[{
-//                           "type":"text",
-//                           "text":"Tool not ready. Please tell user to check the tool status and try again"
-//                           }],
-//                           "isError":true
-//                           }
-//                           """;
-//                    resp = "Tool not ready. Please tell user to check the tool status and try again";
+                    error = McpSchema.CallToolResult.builder().addTextContent(
+                            "Caught Exception, Error: SERVICE_FAILED, This tool is unavailable. Please check the tool status"
+                    ).isError(true).build();
                 }
             }
             resp = JSON.toJson(error);
         } catch (Exception ignore) {
         }
+        //{"content":[{"type":"text","text":"Caught Exception. Error: Error 255;This tool is unavailable. Please notify user to check the tool status"}],"isError":true}
         return resp;
     }
     @Override

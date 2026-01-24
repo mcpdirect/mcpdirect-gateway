@@ -51,7 +51,7 @@ public class MCPdirectGatewayHttpServlet extends HttpServlet {
         MCPdirectToolProviderFactory factory = MCPdirectGatewayApplication.getMCPdirectToolProviderFactory();
         MCPdirectToolProvider provider = factory.getMCPdirectToolProvider(auth);
         if (provider == null) {
-            resp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+            resp.sendError(HttpServletResponse.SC_FORBIDDEN);
             return;
         }
         if(sse){

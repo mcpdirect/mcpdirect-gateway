@@ -241,7 +241,7 @@ public class MCPdirectToolProvider {
             if(streamServer==null) {
                 String mcpEndpoint;
                 if(req.getHeader("Authorization")!=null||req.getHeader("X-MCPdirect-Key")!=null){
-                    mcpEndpoint = MCP_ENDPOINT.substring(1);
+                    mcpEndpoint = MCP_ENDPOINT;
                 }else{
                     mcpEndpoint = secretKey.substring(4) + MCP_ENDPOINT;
                 }
@@ -255,9 +255,6 @@ public class MCPdirectToolProvider {
                         .capabilities(SERVER_CAPABILITIES)
                         .tools(toolSpecs.values().stream().toList())
                         .build();
-//                for (McpServerFeatures.AsyncToolSpecification tool : tools.values()) {
-//                    streamServer.addTool(tool);
-//                }
             }
         }
         streamTransport.service(req,resp);

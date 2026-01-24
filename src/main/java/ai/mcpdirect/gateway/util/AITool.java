@@ -76,7 +76,7 @@ public class AITool implements ToolCallback{
         }
         return call(toolInput,clientInfo);
     }
-    private static final String MCPDirectStudioClient = "mcpdirectstudio#";
+    private static final String MCPDirectStudioClient = "mcpdirectstudio";
     public static class ResponseOfAIService {
         public String status = "failed";
         public String message;
@@ -85,9 +85,12 @@ public class AITool implements ToolCallback{
     public @NonNull String call(@NonNull String toolInput,McpSchema.Implementation  clientInfo) {
         if(clientInfo!=null){
             String name = clientInfo.name();
-            if(name.toLowerCase(Locale.ROOT).startsWith(MCPDirectStudioClient)&&
-                    usl.getDomainName().equals(name.substring(MCPDirectStudioClient.length()))){
-                return "Bad Request";
+//            if(name.toLowerCase(Locale.ROOT).startsWith(MCPDirectStudioClient)&&
+//                    usl.getDomainName().equals(name.substring(MCPDirectStudioClient.length()))){
+//                return "{\"content\":[{\"type\":\"text\",\"text\":\"Caught Exception, Error: bad request\"}],\"isError\":true}";
+//            }
+            if(name.toLowerCase(Locale.ROOT).startsWith(MCPDirectStudioClient)){
+                return "{\"content\":[{\"type\":\"text\",\"text\":\"Caught Exception, Error: bad request\"}],\"isError\":true}";
             }
             headers.addHeader("X-MCP-Client-Name",clientInfo.name());
         }

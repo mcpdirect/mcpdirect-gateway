@@ -179,6 +179,7 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
         }
 //        long agentId = 0;
 //        AIToolDirectory.Tools tools=null;
+        Map<String,AIToolDirectory.Description> descriptionMap = new HashMap<>();
         for (AIPortTool tool : aiPortTools) {
             List<AIPortTeamToolMaker> list = teamToolMakerMap.get(tool.makerId);
             boolean skip = false;
@@ -204,12 +205,23 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
                     tools.engineId = agent.engineId;
                     directory.tools.put(tools.engineId, tools);
                 }
+                AIPortToolMaker maker = makerMap.get(tool.makerId);
+                AIToolDirectory.Description old = descriptionMap.get(tool.name);
                 AIToolDirectory.Description d = new AIToolDirectory.Description();
                 d.toolId = tool.id;
-                d.name = tool.name;
-                d.tags = makerMap.get(tool.makerId).tags;
+                d.makerName = maker.name;
+                d.tags = maker.tags;
                 d.metaData = JSON.fromJson(tool.metaData, new TypeReference<>() {
                 });
+                if(old!=null){
+                    if(!old.name.startsWith(old.makerName+"_")){
+                        old.name = old.makerName+"_"+old.name;
+                    }
+                    d.name = d.makerName+"_"+tool.name;
+                }else {
+                    d.name = tool.name;
+                    descriptionMap.put(d.name,d);
+                }
                 tools.descriptions.add(d);
             }
         }

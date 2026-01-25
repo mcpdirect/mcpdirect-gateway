@@ -8,6 +8,7 @@ public class AIToolDirectory {
     public static class Description{
         public long toolId;
         public String name;
+        public String makerName;
 //        public List<String> tags;
         public String tags;
         public ServiceDescription metaData;

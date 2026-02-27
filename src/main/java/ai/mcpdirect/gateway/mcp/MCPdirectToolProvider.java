@@ -7,6 +7,7 @@ import appnet.hstp.ServiceEngine;
 import appnet.hstp.USL;
 import appnet.hstp.engine.util.JSON;
 import io.modelcontextprotocol.common.McpTransportContext;
+import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.server.*;
 import io.modelcontextprotocol.server.transport.HttpServletSseServerTransportProvider;
@@ -19,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.model.ModelOptionsUtils;
-import org.springframework.ai.tool.ToolCallback;
 import org.springframework.util.MimeType;
 import reactor.core.publisher.Mono;
 
@@ -33,7 +33,7 @@ import static ai.mcpdirect.gateway.mcp.MCPdirectGatewayHttpServlet.*;
 
 public class MCPdirectToolProvider {
     private static final Logger LOG = LoggerFactory.getLogger(MCPdirectToolProvider.class);
-    private static final McpJsonMapper jsonMapper = McpJsonMapper.getDefault();
+    private static final McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
     private static final McpTransportContextExtractor<HttpServletRequest> CONTEXT_EXTRACTOR
             = (r) -> McpTransportContext.create(Map.of("X-MCPdirect", "2.0.0"));
     private static final McpSchema.ServerCapabilities SERVER_CAPABILITIES
@@ -66,53 +66,55 @@ public class MCPdirectToolProvider {
         return userId;
     }
     public static final String TOOL_CONTEXT_MCP_EXCHANGE_KEY = "exchange";
-    public static McpServerFeatures.SyncToolSpecification toSyncToolSpecification(ToolCallback toolCallback, MimeType mimeType) {
-        McpSchema.Tool.Builder builder = McpSchema.Tool.builder();
-        var tool = builder.name(toolCallback.getToolDefinition().name())
-                .description(toolCallback.getToolDefinition().description())
-                .inputSchema(jsonMapper,toolCallback.getToolDefinition().inputSchema())
-                .build();
+    public static McpServerFeatures.SyncToolSpecification toSyncToolSpecification(AITool tool, MimeType mimeType) {
+//        McpSchema.Tool.Builder builder = McpSchema.Tool.builder();
+//        var tool = builder.name(toolCallback.getToolDefinition().name())
+//                .description(toolCallback.getToolDefinition().description())
+//                .inputSchema(jsonMapper,toolCallback.getToolDefinition().inputSchema())
+//                .build();
 
-        return new McpServerFeatures.SyncToolSpecification(tool, null,(exchange, request) -> {
+        return new McpServerFeatures.SyncToolSpecification(tool.generateMcpSchemaTool(),null, (exchange, request) -> {
             try {
-                ToolContext toolContext = exchange!=null?new ToolContext(Map.of(TOOL_CONTEXT_MCP_EXCHANGE_KEY, exchange)):null;
-                String callResult = toolCallback.call(ModelOptionsUtils.toJsonString(request.arguments()), toolContext);
+                Map<String,Object> map  = new HashMap<>();
+                map.put(TOOL_CONTEXT_MCP_EXCHANGE_KEY, exchange);
+                ToolContext toolContext = exchange!=null?new ToolContext(map):null;
+                String callResult = tool.call(ModelOptionsUtils.toJsonString(request.arguments()), toolContext);
                 if (mimeType != null && mimeType.toString().startsWith("image")) {
                     return new McpSchema.CallToolResult(List
-                            .of(new McpSchema.ImageContent(List.of(McpSchema.Role.ASSISTANT), null, callResult, mimeType.toString())),
-                            false);
+                            .of(new McpSchema.ImageContent(null, callResult, mimeType.toString())),
+                            false,null,null);
                 }
 //				return new McpSchema.CallToolResult(List.of(new McpSchema.TextContent(callResult)), false);
                 return JSON.fromJson(callResult,McpSchema.CallToolResult.class);
             }
             catch (Exception e) {
-                return new McpSchema.CallToolResult(e.getMessage(), true);
+                return new McpSchema.CallToolResult(List.of(new McpSchema.TextContent(e.getMessage())), true,null,null);
             }
         });
     }
     public static McpServerFeatures.AsyncToolSpecification toAsyncToolSpecification(
-            ToolCallback toolCallback, MimeType mimeType, boolean immediate
+            AITool tool, MimeType mimeType, boolean immediate
     ) {
-        McpSchema.Tool.Builder builder = McpSchema.Tool.builder();
-        var tool = builder.name(toolCallback.getToolDefinition().name())
-                .description(toolCallback.getToolDefinition().description())
-                .inputSchema(jsonMapper,toolCallback.getToolDefinition().inputSchema())
-                .build();
+//        McpSchema.Tool.Builder builder = McpSchema.Tool.builder();
+//        var tool = builder.name(toolCallback.getToolDefinition().name())
+//                .description(toolCallback.getToolDefinition().description())
+//                .inputSchema(jsonMapper,toolCallback.getToolDefinition().inputSchema())
+//                .build();
 
-        return new McpServerFeatures.AsyncToolSpecification(tool, null,(exchange, request) -> {
+        return new McpServerFeatures.AsyncToolSpecification(tool.generateMcpSchemaTool(),null, (exchange, request) -> {
             try {
                 ToolContext toolContext = exchange!=null?new ToolContext(Map.of(TOOL_CONTEXT_MCP_EXCHANGE_KEY, exchange)):null;
-                String callResult = toolCallback.call(ModelOptionsUtils.toJsonString(request.arguments()), toolContext);
+                String callResult = tool.call(ModelOptionsUtils.toJsonString(request.arguments()), toolContext);
                 if (mimeType != null && mimeType.toString().startsWith("image")) {
                     return Mono.just(new McpSchema.CallToolResult(List
-                            .of(new McpSchema.ImageContent(List.of(McpSchema.Role.ASSISTANT), null, callResult, mimeType.toString())),
-                            false));
+                            .of(new McpSchema.ImageContent(null, callResult, mimeType.toString())),
+                            false,null,null));
                 }
 //				return new McpSchema.CallToolResult(List.of(new McpSchema.TextContent(callResult)), false);
                 return Mono.just(JSON.fromJson(callResult,McpSchema.CallToolResult.class));
             }
             catch (Exception e) {
-                return Mono.just(new McpSchema.CallToolResult(e.getMessage(), true));
+                return Mono.just(new McpSchema.CallToolResult(List.of(new McpSchema.TextContent(e.getMessage())), true,null,null));
             }
         });
     }
@@ -121,21 +123,22 @@ public class MCPdirectToolProvider {
         for (AIToolDirectory.Tools tools : ap.tools.values())
             for (AIToolDirectory.Description d : tools.descriptions) {
                 String name = d.name;
-                ServiceDescription s = d.metaData;
-                String description = s.description;
-                if(d.tags!=null&&!(d.tags=d.tags.trim()).isEmpty()){
-                    description+="\n\n**This tool is associated with "+d.tags+"**";
-                }
-                USL usl = new USL(s.serviceName,tools.engineId,s.servicePath);
-                if(name==null||(name=name.trim()).isEmpty()){
-                    String path = s.servicePath;;
-                    name = path.substring(path.lastIndexOf("/")+1);
-                }
-                AITool aiTool = aiTools.get(name);
-                if(aiTool!=null){
-                    name += ("_"+Integer.toString((Long.toString(d.toolId).hashCode()&0x3FF),32));
-                }
-                aiTool = new AITool(userId,ap.keyId,d.toolId, secretKey, name, description, s.requestSchema, usl, engine);
+//                ServiceDescription s = d.metaData;
+//                String description = s.description;
+//                if(d.tags!=null&&!(d.tags=d.tags.trim()).isEmpty()){
+//                    description+="\n\n**This tool is associated with "+d.tags+"**";
+//                }
+//                USL usl = new USL(s.serviceName,tools.engineId,s.servicePath);
+//                if(name==null||(name=name.trim()).isEmpty()){
+//                    String path = s.servicePath;;
+//                    name = path.substring(path.lastIndexOf("/")+1);
+//                }
+//                AITool aiTool = aiTools.get(name);
+//                if(aiTool!=null){
+//                    name += ("_"+Integer.toString((Long.toString(d.toolId).hashCode()&0x3FF),32));
+//                }
+//                AITool aiTool = new AITool(userId,ap.keyId,d.toolId, secretKey, name, description, s.requestSchema, usl, engine);
+                AITool aiTool = new AITool(userId,ap.keyId,d.toolId, d, engine);
                 aiTools.put(name,aiTool);
                 McpServerFeatures.AsyncToolSpecification toolSpec = toAsyncToolSpecification(
                         aiTool, null,true);

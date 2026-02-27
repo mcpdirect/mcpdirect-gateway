@@ -1,8 +1,6 @@
 package ai.mcpdirect.gateway;
 
-import ai.mcpdirect.gateway.mcp.MCPdirectToolProvider;
 import ai.mcpdirect.gateway.mcp.MCPdirectToolProviderFactory;
-import ai.mcpdirect.gateway.mcp.MCPdirectTransportProviderFactory;
 import appnet.hstp.exception.ServiceEngineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +49,7 @@ public class MCPdirectGatewayApplication implements CommandLineRunner {
 //		mcpSseServer.start();
         ServiceEngineFactory.setServiceEngineIdSeed("ai.mcpdirect.gateway");
         ServiceEngine serviceEngine = ServiceEngineFactory.getServiceEngine();
-        LOG.info("ServiceEngine "+serviceEngine+" started");
+        LOG.info("ServiceEngine {} started", serviceEngine);
     }
 //	public static void addMcpServer(String user,String secretKey){
 //		mcpSseServer.addMcpServer(user, secretKey);
@@ -59,15 +57,15 @@ public class MCPdirectGatewayApplication implements CommandLineRunner {
 //	public static MCPdirectTransportProvider getMcpServer(String user){
 //		return mcpSseServer.getMcpServer(user);
 //	}
-	private static MCPdirectTransportProviderFactory factory;
-
-	public static void setFactory(MCPdirectTransportProviderFactory factory) {
-		MCPdirectGatewayApplication.factory = factory;
-	}
-
-	public static MCPdirectTransportProviderFactory getFactory() {
-		return factory;
-	}
+//	private static MCPdirectTransportProviderFactory factory;
+//
+//	public static void setFactory(MCPdirectTransportProviderFactory factory) {
+//		MCPdirectGatewayApplication.factory = factory;
+//	}
+//
+//	public static MCPdirectTransportProviderFactory getFactory() {
+//		return factory;
+//	}
 
     private static MCPdirectToolProviderFactory toolProviderFactory = new MCPdirectToolProviderFactory() {};
     public static void setMCPdirectToolProviderFactory(MCPdirectToolProviderFactory factory) {

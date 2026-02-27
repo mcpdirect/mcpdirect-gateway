@@ -1,18 +1,21 @@
 package ai.mcpdirect.gateway.util;
 
 import appnet.hstp.ServiceDescription;
+import appnet.hstp.USL;
+import io.modelcontextprotocol.spec.McpSchema;
 
 import java.util.*;
 
 public class AIToolDirectory {
     public static class Description{
         public long toolId;
+        public int toolHash;
         public String name;
         public String makerName;
-//        public List<String> tags;
-        public String tags;
-        public ServiceDescription metaData;
-//        public MCPToolSchema metaData;
+//        public String tags;
+//        public ServiceDescription metaData;
+        public McpSchema.Tool.Builder mcpToolBuilder = McpSchema.Tool.builder();
+        public USL usl;
     }
     public static class Tools{
         public String engineId;

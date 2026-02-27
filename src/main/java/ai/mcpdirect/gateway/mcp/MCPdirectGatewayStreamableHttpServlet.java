@@ -39,8 +39,6 @@ public class MCPdirectGatewayStreamableHttpServlet extends HttpServlet{
             resp.sendError(HttpServletResponse.SC_FORBIDDEN);
             return;
         }
-        String header = req.getHeader("X-MCPdirect-Servers");
-
         provider.streamable(req,resp);
     }
 }

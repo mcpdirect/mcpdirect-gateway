@@ -20,20 +20,24 @@ import ai.mcpdirect.gateway.util.AIToolDirectory;
 import ai.mcpdirect.gateway.util.MCPdirectAccessKeyCache;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import io.modelcontextprotocol.json.McpJsonDefaults;
+import io.modelcontextprotocol.json.McpJsonMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
 @ServiceName("aitools.hub")
 @ServiceRequestMapping("/aitools/hub/")
-public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCPdirectTransportProviderFactory,ServiceBroadcastListener {
+public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,ServiceBroadcastListener {
     private static final ConcurrentLinkedQueue<AIPortToolLog> TOOL_LOGS = new ConcurrentLinkedQueue<>();
+    private static final McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
+    private static final Logger LOG = LoggerFactory.getLogger(AIToolHubServiceHandler.class);
+
     public static void recordToolLog(long userId,long keyId,long toolId){
         TOOL_LOGS.add(new AIPortToolLog(userId,keyId,toolId));
     }
-    private static final Logger LOG = LoggerFactory.getLogger(AIToolHubServiceHandler.class);
-//    aitools.discovery@mcpdirect.ai/list/user/tools
-    public static final USL USL_LIST_USER_TOOLS = new USL("aitools.discovery","mcpdirect.ai","list/user/tools");
+//    public static final USL USL_LIST_USER_TOOLS = new USL("aitools.discovery","mcpdirect.ai","list/user/tools");
+
     private ServiceEngine engine;
     private MCPToolAccessKeyMapper accessKeyMapper;
     private MCPToolMapper toolMapper;
@@ -43,9 +47,7 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
         this.engine = engine;
         accessKeyMapper = MCPToolAccessKeyDataHelper.getInstance().getMCPAccessKeyMapper();
         toolMapper = MCPToolDataHelper.getInstance().getMCPToolMapper();
-        MCPdirectGatewayApplication.setFactory(this);
         MCPdirectGatewayApplication.setMCPdirectToolProviderFactory(this);
-//        executorService = Executors.newFixedThreadPool(200);
         engine.joinBroadcastGroup(new USL("aitools","mcpdirect.ai"),
                 "", AUDIENCES_PEERS|AUDIENCES_LOCAL, this);
 
@@ -113,12 +115,11 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
                 }else if(path.equals("/access_key/update")){
                     List<MCPdirectAccessKeyCache.AccessKey> list = JSON.fromJson(message, new TypeReference<>() {});
                     for (MCPdirectAccessKeyCache.AccessKey accessKey : list) {
-//                        MCPdirectAccessKeyCache.AccessKey old = cache.get(accessKey.userId, accessKey.id);
                         MCPdirectAccessKeyCache.AccessKey old = cache.getAccessKey(accessKey.id);
                         if(old!=null){
                             old.status = accessKey.status;
                             if(accessKey.status<1){
-                                MCPdirectTransportProvider provider = providers.remove(MCPdirectAccessKeyValidator.hashCode(old.aik));
+                                MCPdirectToolProvider provider = toolProviders.remove(MCPdirectAccessKeyValidator.hashCode(old.aik));
                                 if(provider!=null){
                                     provider.closeGracefully();
                                     cache.addAccessKey(accessKey.userId,accessKey.id,-1,null,accessKey.name);
@@ -132,7 +133,7 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
             }
         }
     }
-    final ConcurrentHashMap<Long, MCPdirectTransportProvider> providers = new ConcurrentHashMap<>();
+//    final ConcurrentHashMap<Long, MCPdirectTransportProvider> providers = new ConcurrentHashMap<>();
     final ConcurrentHashMap<Long, MCPdirectToolProvider> toolProviders = new ConcurrentHashMap<>();
     final MCPdirectAccessKeyCache cache = new MCPdirectAccessKeyCache();
 
@@ -181,14 +182,18 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
 //        AIToolDirectory.Tools tools=null;
         Map<String,AIToolDirectory.Description> descriptionMap = new HashMap<>();
         for (AIPortTool tool : aiPortTools) {
-            List<AIPortTeamToolMaker> list = teamToolMakerMap.get(tool.makerId);
             boolean skip = false;
-            if(list!=null) for (AIPortTeamToolMaker teamToolMaker : list) {
-                if(teamToolMaker.status>0&&teamToolMaker.memberStatus>0&&teamToolMaker.teamStatus>0){
-                    break;
+            AIPortToolMaker maker = makerMap.get(tool.makerId);
+            if(maker.userId!=key.userId) {
+                List<AIPortTeamToolMaker> list = teamToolMakerMap.get(tool.makerId);
+                if (list != null) for (AIPortTeamToolMaker teamToolMaker : list) {
+                    if (teamToolMaker.status > 0 && teamToolMaker.memberStatus > 0 && teamToolMaker.teamStatus > 0) {
+                        skip = false;
+                        break;
+                    }
+                    skip = true;
                 }
-                skip = true;
-            }
+            }else if(maker.status<1) continue;
             AIPortToolAgent agent;
             if(!skip&&(agent = agentMap.get(tool.agentId))!=null) {
 //                if (tool.agentId != agentId) {
@@ -205,14 +210,14 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
                     tools.engineId = agent.engineId;
                     directory.tools.put(tools.engineId, tools);
                 }
-                AIPortToolMaker maker = makerMap.get(tool.makerId);
                 AIToolDirectory.Description old = descriptionMap.get(tool.name);
                 AIToolDirectory.Description d = new AIToolDirectory.Description();
                 d.toolId = tool.id;
+                d.toolHash = tool.hash;
                 d.makerName = maker.name;
-                d.tags = maker.tags;
-                d.metaData = JSON.fromJson(tool.metaData, new TypeReference<>() {
-                });
+//                d.tags = maker.tags;
+//                d.metaData = JSON.fromJson(tool.metaData, new TypeReference<>() {
+//                });
                 if(old!=null){
                     if(!old.name.startsWith(old.makerName+"_")){
                         old.name = old.makerName+"_"+old.name;
@@ -222,58 +227,66 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
                     d.name = tool.name;
                     descriptionMap.put(d.name,d);
                 }
+                ServiceDescription metaData = JSON.fromJson(tool.metaData, new TypeReference<>(){});
+                String tags = maker.tags;
+                String description = metaData.description;
+                if(tags!=null&&!(tags=tags.trim()).isEmpty()){
+                    description+="\n\n**This tool is associated with "+tags+"**";
+                }
+                d.mcpToolBuilder.description(description).inputSchema(jsonMapper,metaData.requestSchema);
+                d.usl = new USL(metaData.serviceName,tools.engineId,metaData.servicePath);
                 tools.descriptions.add(d);
             }
         }
 //        if(tools!=null) directory.tools.put(tools.engineId,tools);
         return directory;
     }
-    @Override
-    public MCPdirectTransportProvider getMCPdirectTransportProvider(String apiKey) {
-        MCPdirectTransportProvider provider;
-        long apiKeyHash = MCPdirectAccessKeyValidator.hashCode(apiKey);
-        MCPdirectAccessKeyCache.AccessKey accessKey = cache.getAccessKey(apiKeyHash);
-        if(accessKey!=null&&accessKey.status<1){
-            provider = providers.remove(apiKeyHash);
-            if(provider!=null){
-                provider.closeGracefully();
-            }
-            return null;
-        }
-
-        provider = providers.get(apiKeyHash);
-        if(provider==null||accessKey==null||cache.toolsAnnounced(accessKey.userId))try {
-            if(provider!=null){
-                providers.remove(apiKeyHash);
-                provider.closeGracefully();
-            }
-
-            AIToolDirectory ap = listUserTools(apiKeyHash);
-            provider = createMCPdirectTransportProvider(ap.userId,apiKey);
-            for (AIToolDirectory.Tools tools : ap.tools.values())
-                for (AIToolDirectory.Description d : tools.descriptions) {
-                    String name = d.name;
-                    ServiceDescription s = d.metaData;
-                    String description = s.description;
-                    if(d.tags!=null&&!(d.tags=d.tags.trim()).isEmpty()){
-                        description+="\n\n**This tool is associated with "+d.tags+"**";
-                    }
-                    USL usl = new USL(s.serviceName,tools.engineId,s.servicePath);
-                    if(name==null||(name=name.trim()).isEmpty()){
-                        String path = s.servicePath;;
-                        name = "_"+path.substring(path.lastIndexOf("/")+1);
-                    }else name="_"+name;
-                    if(name.length()>54) name = name.substring(0,54);
-                    name += ("_"+Long.toString((usl.toString().hashCode()&0xFFFFFFFFL),32));
-                    provider.addTool(ap.userId,apiKeyHash,d.toolId,name, description, s.requestSchema,usl, engine);
-                }
-            cache.addAccessKey(ap.userId,apiKeyHash,1,apiKey,ap.keyName);
-            cache.toolsUpdate(ap.userId,System.currentTimeMillis());
-        }catch (Exception e){
-            LOG.error("getMCPdirectTransportProvider({})",apiKey,e);
-        }
-        return provider;
-    }
+//    @Override
+//    public MCPdirectTransportProvider getMCPdirectTransportProvider(String apiKey) {
+//        MCPdirectTransportProvider provider;
+//        long apiKeyHash = MCPdirectAccessKeyValidator.hashCode(apiKey);
+//        MCPdirectAccessKeyCache.AccessKey accessKey = cache.getAccessKey(apiKeyHash);
+//        if(accessKey!=null&&accessKey.status<1){
+//            provider = providers.remove(apiKeyHash);
+//            if(provider!=null){
+//                provider.closeGracefully();
+//            }
+//            return null;
+//        }
+//
+//        provider = providers.get(apiKeyHash);
+//        if(provider==null||accessKey==null||cache.toolsAnnounced(accessKey.userId))try {
+//            if(provider!=null){
+//                providers.remove(apiKeyHash);
+//                provider.closeGracefully();
+//            }
+//
+//            AIToolDirectory ap = listUserTools(apiKeyHash);
+//            provider = createMCPdirectTransportProvider(ap.userId,apiKey);
+//            for (AIToolDirectory.Tools tools : ap.tools.values())
+//                for (AIToolDirectory.Description d : tools.descriptions) {
+//                    String name = d.name;
+//                    ServiceDescription s = d.metaData;
+//                    String description = s.description;
+//                    if(d.tags!=null&&!(d.tags=d.tags.trim()).isEmpty()){
+//                        description+="\n\n**This tool is associated with "+d.tags+"**";
+//                    }
+//                    USL usl = new USL(s.serviceName,tools.engineId,s.servicePath);
+//                    if(name==null||(name=name.trim()).isEmpty()){
+//                        String path = s.servicePath;;
+//                        name = "_"+path.substring(path.lastIndexOf("/")+1);
+//                    }else name="_"+name;
+//                    if(name.length()>54) name = name.substring(0,54);
+//                    name += ("_"+Long.toString((usl.toString().hashCode()&0xFFFFFFFFL),32));
+//                    provider.addTool(ap.userId,apiKeyHash,d.toolId,name, description, s.requestSchema,usl, engine);
+//                }
+//            cache.addAccessKey(ap.userId,apiKeyHash,1,apiKey,ap.keyName);
+//            cache.toolsUpdate(ap.userId,System.currentTimeMillis());
+//        }catch (Exception e){
+//            LOG.error("getMCPdirectTransportProvider({})",apiKey,e);
+//        }
+//        return provider;
+//    }
 
     @Override
     public MCPdirectToolProvider getMCPdirectToolProvider(String apiKey) {
@@ -281,10 +294,10 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
         long apiKeyHash = MCPdirectAccessKeyValidator.hashCode(apiKey);
         MCPdirectAccessKeyCache.AccessKey accessKey = cache.getAccessKey(apiKeyHash);
         if(accessKey!=null&&accessKey.status<1){
-            provider = toolProviders.remove(apiKeyHash);
-            if(provider!=null){
-                provider.closeGracefully();
-            }
+//            provider = toolProviders.remove(apiKeyHash);
+//            if(provider!=null){
+//                provider.closeGracefully();
+//            }
             return null;
         }
 
@@ -388,10 +401,10 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,MCP
 //        }
 //        return provider;
 //    }
-
-    private MCPdirectTransportProvider createMCPdirectTransportProvider(long userId, String apiKey){
-        MCPdirectTransportProvider provider = new MCPdirectTransportProvider(userId, apiKey);
-        providers.put(MCPdirectAccessKeyValidator.hashCode(apiKey), provider);
-        return provider;
-    }
+//
+//    private MCPdirectTransportProvider createMCPdirectTransportProvider(long userId, String apiKey){
+//        MCPdirectTransportProvider provider = new MCPdirectTransportProvider(userId, apiKey);
+//        providers.put(MCPdirectAccessKeyValidator.hashCode(apiKey), provider);
+//        return provider;
+//    }
 }

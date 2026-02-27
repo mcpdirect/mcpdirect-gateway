@@ -1,9 +1,12 @@
 package ai.mcpdirect.gateway.mcp;
 
+import appnet.hstp.engine.util.JSON;
+import io.modelcontextprotocol.spec.McpSchema;
 import junit.framework.TestCase;
 
-import static ai.mcpdirect.gateway.mcp.MCPdirectGatewaySseHttpServlet.MSG_ENDPOINT;
-import static ai.mcpdirect.gateway.mcp.MCPdirectGatewaySseHttpServlet.SSE_ENDPOINT;
+import static ai.mcpdirect.gateway.mcp.MCPdirectGatewayHttpServlet.SSE_ENDPOINT;
+import static ai.mcpdirect.gateway.mcp.MCPdirectGatewayHttpServlet.SSE_MSG_ENDPOINT;
+
 
 public class MCPdirectGatewaySseHttpServletTest extends TestCase {
     public void test(){
@@ -26,7 +29,7 @@ public class MCPdirectGatewaySseHttpServletTest extends TestCase {
         String[] split = path.split("/");
         if(path.endsWith(SSE_ENDPOINT)){
             auth = split[split.length-2];
-        }else if(path.endsWith(MSG_ENDPOINT)){
+        }else if(path.endsWith(SSE_MSG_ENDPOINT)){
             auth = split[split.length-3];
         }
         return auth;
@@ -62,5 +65,11 @@ public class MCPdirectGatewaySseHttpServletTest extends TestCase {
             System.out.println(Integer.toString(Long.toString(l).hashCode()&0x3FF,32));
         }
 
+    }
+
+    public void testCallResult() throws Exception {
+        System.out.println(JSON.toJson(McpSchema.CallToolResult.builder().addTextContent(
+                "Caught Exception, Error: SERVICE_FAILED, This tool is unavailable. Please check the tool status"
+        ).isError(true).build()));
     }
 }

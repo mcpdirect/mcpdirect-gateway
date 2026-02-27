@@ -1,24 +1,18 @@
 package ai.mcpdirect.gateway.util;
 
-import ai.mcpdirect.gateway.dao.entity.aitool.AIPortToolLog;
 import ai.mcpdirect.gateway.service.AIToolHubServiceHandler;
 import appnet.hstp.ServiceHeaders;
-import ai.mcpdirect.util.MCPdirectAccessKeyValidator;
 import appnet.hstp.engine.util.JSON;
-import com.fasterxml.jackson.core.type.TypeReference;
-import io.modelcontextprotocol.server.McpSyncServer;
+import io.modelcontextprotocol.json.McpJsonDefaults;
+import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ToolContext;
-import org.springframework.ai.tool.ToolCallback;
-import org.springframework.ai.tool.definition.DefaultToolDefinition;
-import org.springframework.ai.tool.definition.ToolDefinition;
 
 import appnet.hstp.Service;
 import appnet.hstp.ServiceEngine;
-import appnet.hstp.USL;
 
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
@@ -26,45 +20,55 @@ import org.springframework.lang.Nullable;
 import java.util.Locale;
 import java.util.Map;
 
-public class AITool implements ToolCallback{
+public class AITool{
     private static final Logger LOG = LoggerFactory.getLogger(AITool.class);
-    private final ToolDefinition toolDef;
+    private static final McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
+//    private final ToolDefinition toolDef;
     private final ServiceEngine engine;
-    private final USL usl;
-//    private final MCPdirectServer server;
+//    private final USL usl;
     private final ServiceHeaders headers;
     private final long userId;
     private final long keyId;
     private final long toolId;
-    public AITool(long userId,long keyId,long toolId,
-            String secretKey,
-                  String name,String description,String inputSchema,
-                  USL usl,ServiceEngine engine){
+//    private final McpSchema.Tool.Builder mcpToolBuilder;
+    private final AIToolDirectory.Description description;
+    public AITool(
+            long userId,long keyId,long toolId,AIToolDirectory.Description description,ServiceEngine engine
+//            String secretKey,
+//            String name,String description,String inputSchema,
+//            USL usl,ServiceEngine engine
+    ){
         this.userId = userId;
         this.keyId = keyId;
         this.toolId = toolId;
         headers = new ServiceHeaders().addHeader("X-MCPdirect-Key-ID",
-                String.valueOf(MCPdirectAccessKeyValidator.hashCode(secretKey)));
+                String.valueOf(keyId));
 //        this.server = server;
-        toolDef = DefaultToolDefinition.builder().name(name).description(description).inputSchema(inputSchema).build();
-        this.usl = usl;
+//        toolDef = DefaultToolDefinition.builder().name(name).description(description).inputSchema(inputSchema).build();
+//        this.usl = usl;
+        this.description = description;
         this.engine = engine;
+//        this.mcpToolBuilder = McpSchema.Tool.builder().description(description).inputSchema(jsonMapper,inputSchema);
     }
 
-//    public MCPdirectServer getMcpSyncServer() {
+    public McpSchema.Tool generateMcpSchemaTool() {
+        return description.mcpToolBuilder.name(description.name).build();
+    }
+
+    //    public MCPdirectServer getMcpSyncServer() {
 //        return server;
 //    }
 
-    @Override
-    public @NonNull ToolDefinition getToolDefinition() {
-        return toolDef;
-    }
+//    @Override
+//    public @NonNull ToolDefinition getToolDefinition() {
+//        return toolDef;
+//    }
 
-    @Override
+//    @Override
     public @NonNull String call(@NonNull String toolInput) {
         return call(toolInput,(McpSchema.Implementation)null);
     }
-    @Override
+//    @Override
     public @NonNull String call(@NonNull String toolInput, @Nullable ToolContext toolContext) {
         Map<String, Object> context;
         McpSchema.Implementation clientInfo=null;
@@ -97,7 +101,7 @@ public class AITool implements ToolCallback{
         String resp = null;
         int errorCode = Service.SERVICE_FAILED;
         try {
-            Service service = usl.createServiceClient().
+            Service service = description.usl.createServiceClient().
                     headers(headers).
                     content(toolInput).request(engine);
             errorCode = service.getErrorCode();
@@ -106,10 +110,10 @@ public class AITool implements ToolCallback{
                 resp = aiResp.data;
                 AIToolHubServiceHandler.recordToolLog(userId,keyId,toolId);
             }else{
-                LOG.error("response({},{}):{},{}",usl,toolInput,errorCode,service.getErrorMessage());
+                LOG.error("response({},{}):{},{}",description.usl,toolInput,errorCode,service.getErrorMessage());
             }
         } catch (Exception e) {
-            LOG.warn("call({},{})",usl,toolInput,e);
+            LOG.warn("call({},{})",description.usl,toolInput,e);
         }
         if(resp==null) try{
             McpSchema.CallToolResult error = null;
@@ -136,8 +140,8 @@ public class AITool implements ToolCallback{
         //{"content":[{"type":"text","text":"Caught Exception. Error: Error 255;This tool is unavailable. Please notify user to check the tool status"}],"isError":true}
         return resp;
     }
-    @Override
-    public String toString() {
-        return toolDef.toString();
-    }
+//    @Override
+//    public String toString() {
+//        return toolDef.toString();
+//    }
 }

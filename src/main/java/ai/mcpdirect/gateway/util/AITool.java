@@ -5,6 +5,7 @@ import appnet.hstp.ServiceHeaders;
 import appnet.hstp.engine.util.JSON;
 import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.json.McpJsonMapper;
+import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.slf4j.Logger;
@@ -14,15 +15,19 @@ import org.springframework.ai.chat.model.ToolContext;
 import appnet.hstp.Service;
 import appnet.hstp.ServiceEngine;
 
+import org.springframework.ai.model.ModelOptionsUtils;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
+import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 public class AITool{
     private static final Logger LOG = LoggerFactory.getLogger(AITool.class);
     private static final McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
+    public static final String TOOL_CONTEXT_MCP_EXCHANGE_KEY = "exchange";
 //    private final ToolDefinition toolDef;
     private final ServiceEngine engine;
 //    private final USL usl;
@@ -32,6 +37,7 @@ public class AITool{
     private final long toolId;
 //    private final McpSchema.Tool.Builder mcpToolBuilder;
     private final AIToolDirectory.Description description;
+    private McpServerFeatures.AsyncToolSpecification asyncToolSpecification;
     public AITool(
             long userId,long keyId,long toolId,AIToolDirectory.Description description,ServiceEngine engine
 //            String secretKey,
@@ -51,18 +57,28 @@ public class AITool{
 //        this.mcpToolBuilder = McpSchema.Tool.builder().description(description).inputSchema(jsonMapper,inputSchema);
     }
 
+    public int toolHash(){
+        return description.toolHash;
+    }
+
     public McpSchema.Tool generateMcpSchemaTool() {
         return description.mcpToolBuilder.name(description.name).build();
     }
 
-    //    public MCPdirectServer getMcpSyncServer() {
-//        return server;
-//    }
-
-//    @Override
-//    public @NonNull ToolDefinition getToolDefinition() {
-//        return toolDef;
-//    }
+    public McpServerFeatures.AsyncToolSpecification getAsyncToolSpecification() {
+        if(asyncToolSpecification==null) asyncToolSpecification =  new McpServerFeatures.AsyncToolSpecification(
+                generateMcpSchemaTool(),null, (exchange, request) -> {
+            try {
+                ToolContext toolContext = exchange!=null?new ToolContext(Map.of(TOOL_CONTEXT_MCP_EXCHANGE_KEY, exchange)):null;
+                String callResult = call(ModelOptionsUtils.toJsonString(request.arguments()), toolContext);
+                return Mono.just(JSON.fromJson(callResult,McpSchema.CallToolResult.class));
+            }
+            catch (Exception e) {
+                return Mono.just(new McpSchema.CallToolResult(List.of(new McpSchema.TextContent(e.getMessage())), true,null,null));
+            }
+        });
+        return asyncToolSpecification;
+    }
 
 //    @Override
     public @NonNull String call(@NonNull String toolInput) {

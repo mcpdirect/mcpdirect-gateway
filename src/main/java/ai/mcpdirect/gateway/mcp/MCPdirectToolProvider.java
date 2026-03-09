@@ -25,6 +25,7 @@ import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,7 +43,8 @@ public class MCPdirectToolProvider {
             .prompts(true)
             .resources(true, true)
             .build();
-    private final ConcurrentHashMap<String, McpServerFeatures.AsyncToolSpecification> toolSpecs =new ConcurrentHashMap<>();
+//    private final ConcurrentHashMap<String, McpServerFeatures.AsyncToolSpecification> toolSpecs =new ConcurrentHashMap<>();
+private final ConcurrentHashMap<String, AITool> toolSpecs =new ConcurrentHashMap<>();
 //    private final ConcurrentHashMap<String, AITool> tools=new ConcurrentHashMap<>();
     private final long userId;
     private final String secretKey;
@@ -75,9 +77,7 @@ public class MCPdirectToolProvider {
 
         return new McpServerFeatures.SyncToolSpecification(tool.generateMcpSchemaTool(),null, (exchange, request) -> {
             try {
-                Map<String,Object> map  = new HashMap<>();
-                map.put(TOOL_CONTEXT_MCP_EXCHANGE_KEY, exchange);
-                ToolContext toolContext = exchange!=null?new ToolContext(map):null;
+                ToolContext toolContext = exchange!=null?new ToolContext(Map.of(TOOL_CONTEXT_MCP_EXCHANGE_KEY, exchange)):null;
                 String callResult = tool.call(ModelOptionsUtils.toJsonString(request.arguments()), toolContext);
                 if (mimeType != null && mimeType.toString().startsWith("image")) {
                     return new McpSchema.CallToolResult(List
@@ -119,46 +119,38 @@ public class MCPdirectToolProvider {
         });
     }
     public void addTools(AIToolDirectory ap,ServiceEngine engine){
-        HashMap<String, AITool> aiTools=new HashMap<>();
+//        HashMap<String, AITool> aiTools=new HashMap<>();
+        HashSet<String> toolNames = new HashSet<>();
         for (AIToolDirectory.Tools tools : ap.tools.values())
             for (AIToolDirectory.Description d : tools.descriptions) {
                 String name = d.name;
-//                ServiceDescription s = d.metaData;
-//                String description = s.description;
-//                if(d.tags!=null&&!(d.tags=d.tags.trim()).isEmpty()){
-//                    description+="\n\n**This tool is associated with "+d.tags+"**";
-//                }
-//                USL usl = new USL(s.serviceName,tools.engineId,s.servicePath);
-//                if(name==null||(name=name.trim()).isEmpty()){
-//                    String path = s.servicePath;;
-//                    name = path.substring(path.lastIndexOf("/")+1);
-//                }
-//                AITool aiTool = aiTools.get(name);
-//                if(aiTool!=null){
-//                    name += ("_"+Integer.toString((Long.toString(d.toolId).hashCode()&0x3FF),32));
-//                }
-//                AITool aiTool = new AITool(userId,ap.keyId,d.toolId, secretKey, name, description, s.requestSchema, usl, engine);
-                AITool aiTool = new AITool(userId,ap.keyId,d.toolId, d, engine);
-                aiTools.put(name,aiTool);
-                McpServerFeatures.AsyncToolSpecification toolSpec = toAsyncToolSpecification(
-                        aiTool, null,true);
-                try {
-                    if (sseServer != null) sseServer.addTool(toolSpec);
-                    if (streamServer != null) streamServer.addTool(toolSpec);
-                } catch (Exception ignore) {}
-                toolSpecs.put(name,toolSpec);
+                toolNames.add(name);
+                AITool aiTool = toolSpecs.get(name);
+                if(aiTool==null||aiTool.toolHash()!=d.toolHash) {
+                    aiTool = new AITool(userId, ap.keyId, d.toolId, d, engine);
+//                    aiTools.put(name, aiTool);
+                    toolSpecs.put(name, aiTool);
+//                McpServerFeatures.AsyncToolSpecification toolSpec = toAsyncToolSpecification(
+//                        aiTool, null,true);
+                    try {
+                        if (sseServer != null) sseServer.addTool(aiTool.getAsyncToolSpecification()).subscribe();
+                        if (streamServer != null) streamServer.addTool(aiTool.getAsyncToolSpecification()).subscribe();
+                    } catch (Exception ignore) {
+                    }
+//                    toolSpecs.put(name, aiTool);
+                }
             }
-        for (Map.Entry<String, McpServerFeatures.AsyncToolSpecification> en : toolSpecs.entrySet()) {
+        for (Map.Entry<String, AITool> en : toolSpecs.entrySet()) {
             String name = en.getKey();
-            if(!aiTools.containsKey(name)){
+            if(!toolNames.contains(name)){
                 toolSpecs.remove(name);
                 try {
                     if (sseServer != null) sseServer.removeTool(name);
-                    if (streamServer != null) streamServer.removeTool(name);
+                    if (streamServer != null) streamServer.removeTool(name).subscribe();
                 } catch (Exception ignore) {}
             }
         }
-        notifyToolsListChanged();
+//        notifyToolsListChanged();
     }
 //    public void addTool(long userId,long keyId,long toolId,
 //                        String name,String description,String inputSchema,
@@ -196,7 +188,7 @@ public class MCPdirectToolProvider {
         if(sseServer!=null) sseServer.notifyToolsListChanged();
         if(streamServer!=null) streamServer.notifyToolsListChanged();
     }
-    public McpServerFeatures.AsyncToolSpecification getTool(String name){
+    public AITool getTool(String name){
         return toolSpecs.get(name);
     }
     public String getApiKey(){
@@ -229,7 +221,7 @@ public class MCPdirectToolProvider {
                 sseServer = McpServer.async(sseTransport)
                         .serverInfo(keyName, "2.2.0")
                         .capabilities(SERVER_CAPABILITIES)
-                        .tools(toolSpecs.values().stream().toList())
+                        .tools(toolSpecs.values().stream().map(aiTool -> aiTool.getAsyncToolSpecification()).toList())
                         .build();
 
 //                for (McpServerFeatures.AsyncToolSpecification tool : tools.values()) {
@@ -256,7 +248,7 @@ public class MCPdirectToolProvider {
                 streamServer = McpServer.async(streamTransport)
                         .serverInfo(keyName, "2.2.0")
                         .capabilities(SERVER_CAPABILITIES)
-                        .tools(toolSpecs.values().stream().toList())
+                        .tools(toolSpecs.values().stream().map(aiTool -> aiTool.getAsyncToolSpecification()).toList())
                         .build();
             }
         }

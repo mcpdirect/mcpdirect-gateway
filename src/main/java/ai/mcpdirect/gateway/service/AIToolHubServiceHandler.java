@@ -101,28 +101,50 @@ public class AIToolHubServiceHandler implements MCPdirectToolProviderFactory,Ser
         public List<Long> users;
         public List<UpdatedTool> tools;
     }
+    public static class BroadcastOfPermissionGrant{
+        public Map<String,Long> accessKeys;
+    }
     @Override
     public void onServiceBroadcastEvent(int event, USL group, String sourceEngineId, String message) {
         LOG.info("onServiceBroadcastEvent({},{},{},{})",event,group,sourceEngineId,message);
         if (event == ServiceBroadcastListener.BROADCAST_GROUP_MESSAGE_RECEIVED){
             String path = group.getPath();
             try {
-                if (path.equals("/aitools/publish")||path.equals("/aitools/announce")) {
-                    BroadcastOfAnnounce req = JSON.fromJson(message, BroadcastOfAnnounce.class);
-                    if(req.tools!=null) for (UpdatedTool tool : req.tools) {
-                        cache.toolsAnnounce(tool.userId,tool.lastUpdated);
+                switch (path) {
+                    case "/aitools/permission/grant" -> {
+                        BroadcastOfPermissionGrant req = JSON.fromJson(message, BroadcastOfPermissionGrant.class);
+                        if(req.accessKeys!=null)
+                            for (Map.Entry<String, Long> entry : req.accessKeys.entrySet()) {
+                                long keyId = Long.parseLong(entry.getKey());
+                                MCPdirectToolProvider provider = toolProviders.get(keyId);
+                                if(provider!=null) new Thread(()->{
+                                    try {
+                                        provider.addTools(listUserTools(keyId),engine);
+                                    } catch (Exception e) {
+                                        LOG.error("BroadcastOfPermissionGrant()",e);
+                                    }
+                                }).start();
+                            }
                     }
-                }else if(path.equals("/access_key/update")){
-                    List<MCPdirectAccessKeyCache.AccessKey> list = JSON.fromJson(message, new TypeReference<>() {});
-                    for (MCPdirectAccessKeyCache.AccessKey accessKey : list) {
-                        MCPdirectAccessKeyCache.AccessKey old = cache.getAccessKey(accessKey.id);
-                        if(old!=null){
-                            old.status = accessKey.status;
-                            if(accessKey.status<1){
-                                MCPdirectToolProvider provider = toolProviders.remove(MCPdirectAccessKeyValidator.hashCode(old.aik));
-                                if(provider!=null){
-                                    provider.closeGracefully();
-                                    cache.addAccessKey(accessKey.userId,accessKey.id,-1,null,accessKey.name);
+                    case "/aitools/publish", "/aitools/announce" -> {
+                        BroadcastOfAnnounce req = JSON.fromJson(message, BroadcastOfAnnounce.class);
+                        if (req.tools != null) for (UpdatedTool tool : req.tools) {
+                            cache.toolsAnnounce(tool.userId, tool.lastUpdated);
+                        }
+                    }
+                    case "/access_key/update" -> {
+                        List<MCPdirectAccessKeyCache.AccessKey> list = JSON.fromJson(message, new TypeReference<>() {
+                        });
+                        for (MCPdirectAccessKeyCache.AccessKey accessKey : list) {
+                            MCPdirectAccessKeyCache.AccessKey old = cache.getAccessKey(accessKey.id);
+                            if (old != null) {
+                                old.status = accessKey.status;
+                                if (accessKey.status < 1) {
+                                    MCPdirectToolProvider provider = toolProviders.remove(MCPdirectAccessKeyValidator.hashCode(old.aik));
+                                    if (provider != null) {
+                                        provider.closeGracefully();
+                                        cache.addAccessKey(accessKey.userId, accessKey.id, -1, null, accessKey.name);
+                                    }
                                 }
                             }
                         }
